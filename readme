@@ -1,0 +1,36 @@
+The frontend foundation is in good shape: I found 17 HTML pages, all local links and assets resolve, every page has a title, description, viewport setting, one <h1>, image alt text, and labelled form inputs.
+Before we discuss a backend, these are the important things to finish or decide.
+Must fix before launch
+1. Remove all demo authentication before real users arrive.
+   [main.js](C:\Users\USER PC\christian_educators\assets\js\main.js:1) lets anyone “log in” with any email/password and saves identity information in localStorage. This is okay for a prototype, but it is not secure authentication. Anyone can alter browser storage or bypass the dashboard redirect.
+   Do not put protected resources or real member information in [member-dashboard.html](C:\Users\USER PC\christian_educators\pages\member-dashboard.html:1) until real authentication is connected.
+2. Do not launch the Join, Donate, Contact, or Newsletter forms as if they work.
+   Their demonstration notices are good, but the forms currently do not send anything. Before launch, connect:
+   - Join → membership system + hosted payment checkout
+   - Login → real identity/authentication provider
+   - Donate → Stripe, PayPal, or donation/CRM hosted checkout
+   - Contact/newsletter → CRM or email form provider
+   Never process card details, passwords, or membership data in browser-only JavaScript.
+3. Replace all sample and placeholder content.
+   This includes sample pricing, events, articles, testimonials, contact details, impact figures, videos, and “coming soon” text. Examples: [membership.html](C:\Users\USER PC\christian_educators\pages\membership.html:1), [donate.html](C:\Users\USER PC\christian_educators\pages\donate.html:1), and [what_new.html](C:\Users\USER PC\christian_educators\pages\what_new.html:1).
+4. Verify organisation claims.
+   Before publishing, someone authorised by the organisation should approve claims about:
+   - nonprofit / 501(c)(3) status;
+   - tax deductibility;
+   - membership benefits and legal/professional protection;
+   - global availability;
+   - response times and support promises;
+   - statements of faith and privacy policy.
+Important project improvements
+- Add a [.gitignore](C:\Users\USER PC\christian_educators.gitignore) before backend work. It should later exclude .env, credentials, database files, logs, and build output. There is currently no .gitignore.
+- Add a README.md documenting how to run the site, deploy it, and where real service credentials belong.
+- Add automated checks: HTML validation, broken-link checking, accessibility checks, and mobile browser testing.
+- Add social sharing metadata—Open Graph image/title/description—before public launch.
+- Create robots.txt and sitemap.xml when you have the final domain.
+- Use HTTPS only in deployment, and configure security headers later: Content Security Policy, HSTS, X-Content-Type-Options, and clickjacking protection.
+- Do not publish the .git directory through your web host.
+What is already safe
+- No API keys, secrets, payment keys, or external third-party scripts were found.
+- No external URLs were found in the project, so there are no unreviewed external embeds yet.
+- No broken local links were found; the membership links using ?tier=... are valid—the query string only selects a membership tier.
+The next decision before backend development is: do you want a managed membership platform to handle joining, login, renewals, payments, and member data—or a custom backend? For this kind of organisation, a managed platform is usually safer and faster.
