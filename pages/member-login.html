@@ -1,6 +1,36 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Member Login | Christian Educators</title><link rel="stylesheet" href="../assets/css/style.css"></head>
-<body><header class="site-nav"><a class="nav-wordmark" href="../index.html">Christian Educators</a><nav class="nav-links" aria-label="Main navigation"><a href="membership.html">Membership</a><a href="get_help.html">Get Help</a><a href="donate.html">Donate</a></nav></header><main>
-<section class="page-hero"><p class="section-label">Member area</p><h1>Welcome back.</h1><p>Your secure member portal will live here.</p></section>
-<section class="content-section soft-section"><h2>Login needs a secure member system.</h2><p>To make this page functional, connect a membership platform that stores accounts securely and handles password resets. Do not build password storage in these static HTML files.</p><div class="action-row"><a class="action-button" href="membership.html">Not a Member? Explore Membership</a><a class="action-button alt" href="get_help.html">Need Help?</a></div></section>
-</main></body></html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Member Login | Christian Educators Global Network</title><meta name="description" content="Secure member portal login—access member resources, events, and your account."><link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg"><link rel="stylesheet" href="../assets/css/style.css"></head>
+<body><header class="site-nav"><a class="nav-wordmark" href="../index.html"><span class="nav-mark">CE</span><span>Christian Educators<small>Global Network</small></span></a><button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-menu">☰<span class="visually-hidden">Menu</span></button><nav id="nav-menu" class="nav-links" aria-label="Main navigation"><a href="start_here.html">Start Here</a><a href="get_equipped.html">Get Equipped</a><a href="calendar.html">Calendar</a><a href="what_new.html">What's New</a><a href="about.html">About</a><a href="get_help.html">Get Help</a><span class="nav-actions"><a class="nav-login" href="member-login.html" data-nav-portal>Member Login</a><a class="nav-donate" href="donate.html">Donate</a></span></nav></header><main>
+<section class="page-hero"><p class="section-label">Member area</p><h1>Welcome back.</h1><p>Log in to reach member resources, events, and your account—or create an account to get started.</p></section>
+<div class="portal-grid">
+    <section class="form-panel" aria-labelledby="login-heading">
+        <p class="section-label">Returning members</p>
+        <h2 id="login-heading">Log in to your account</h2>
+        <form id="login-form" novalidate>
+            <div class="form-grid">
+                <div class="field field-full"><label for="login-email">Username or Email</label><input id="login-email" name="email" type="email" autocomplete="username" required></div>
+                <div class="field field-full"><label for="login-pass">Password</label><input id="login-pass" name="password" type="password" autocomplete="current-password" required><small><a href="get_help.html">Forgot your password?</a> Contact member care to reset it.</small></div>
+                <div class="field field-full checkbox-field"><input id="login-remember" type="checkbox" checked><label for="login-remember" style="font-weight:600;">Remember me for 2 weeks</label></div>
+            </div>
+            <p class="form-error" hidden>Please enter a valid email address and a password of at least 4 characters.</p>
+            <div class="action-row"><button class="action-button" type="submit">Log In</button><a class="action-button alt" href="membership.html">Not a member yet? Explore Membership</a></div>
+        </form>
+    </section>
+    <section class="form-panel" aria-labelledby="create-heading">
+        <p class="section-label">New here?</p>
+        <h2 id="create-heading">Create an account</h2>
+        <form id="create-account-form" novalidate>
+            <div class="form-grid">
+                <div class="field"><label for="create-first">First Name</label><input id="create-first" name="firstname" type="text" autocomplete="given-name" required></div>
+                <div class="field"><label for="create-last">Last Name</label><input id="create-last" name="lastname" type="text" autocomplete="family-name"></div>
+                <div class="field field-full"><label for="create-email">Email Address</label><input id="create-email" name="email" type="email" autocomplete="email" required></div>
+                <div class="field field-full"><label for="create-pass">Create Password</label><input id="create-pass" name="password" type="password" autocomplete="new-password" required><small>Enter at least 8 characters.</small></div>
+            </div>
+            <p class="form-error" hidden>Please provide your name, a valid email, and a password of at least 8 characters.</p>
+            <div class="action-row"><button class="action-button" type="submit">Create Account</button></div>
+        </form>
+        <div class="form-success" id="create-account-success" hidden>Account created (demonstration mode).<p>Your details were saved in this browser only. In production this step creates a secure account on the membership platform. <a href="member-dashboard.html">Continue to your dashboard →</a></p></div>
+    </section>
+</div>
+<section class="content-section"><p class="form-note">This portal is a front-end demonstration: no real authentication is performed and nothing is sent to a server. Before launch, connect a trusted membership platform (such as NeonCRM, Memberstack, or Wild Apricot) to handle accounts, passwords, and renewals securely.</p></section>
+</main><footer class="site-footer"><div class="footer-grid"><div class="footer-about"><p class="footer-brand">Christian<br>Educators</p><p>A professional association of educators—supporting, connecting, and protecting Christians working in schools worldwide.</p></div><nav class="footer-col" aria-label="Explore links"><p class="footer-heading">Explore</p><a href="start_here.html">Start Here</a><a href="get_equipped.html">Get Equipped</a><a href="calendar.html">Calendar</a><a href="what_new.html">What's New</a></nav><nav class="footer-col" aria-label="Support links"><p class="footer-heading">Support</p><a href="membership.html">Membership</a><a href="member-login.html">Member Login</a><a href="donate.html">Donate</a><a href="generosity.html">Generosity</a></nav><nav class="footer-col" aria-label="Organization links"><p class="footer-heading">Organization</p><a href="about.html">About Us</a><a href="faq.html">FAQs</a><a href="get_help.html">Contact &amp; Help</a><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Use</a></nav></div><p class="footer-legal">Christian Educators Global Network is a 501(c)(3) Religious Non-Profit · © <span data-year>2026</span> Christian Educators Global Network. All rights reserved.</p></footer><script src="../assets/js/main.js"></script></body></html>

@@ -1,7 +1,48 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Donate | Christian Educators</title><link rel="stylesheet" href="../assets/css/style.css"></head>
-<body><header class="site-nav"><a class="nav-wordmark" href="../index.html">Christian Educators</a><nav class="nav-links" aria-label="Main navigation"><a href="start_here.html">Start Here</a><a href="membership.html">Membership</a><a href="about.html">About</a></nav></header><main>
-<section class="page-hero"><p class="section-label">Give</p><h1>Help Christian educators thrive.</h1><p>Your generosity can help create encouragement, resources, and connection for Christians serving in schools.</p></section>
-<section class="content-section warm-section"><h2>Every gift strengthens the mission.</h2><div class="info-grid"><article><h3>Encourage</h3><p>Help make meaningful resources and messages of hope available to educators.</p></article><article><h3>Connect</h3><p>Support gatherings and opportunities that bring educators together.</p></article><article><h3>Equip</h3><p>Invest in tools that help educators serve their students and communities well.</p></article></div></section>
-<section class="content-section"><h2>Secure giving will be connected here.</h2><p>Before accepting donations, connect a trusted provider such as Stripe, PayPal, or a donation platform. The provider handles card information securely; this site should never collect card numbers itself.</p><div class="action-row"><span class="action-button" aria-disabled="true">Secure Donate Button Coming Soon</span><a class="action-button alt" href="generosity.html">Learn About Generosity</a></div></section>
-</main></body></html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Donate | Christian Educators Global Network</title><meta name="description" content="Give to Christian Educators Global Network—support, connect, and protect Christians serving in schools worldwide."><link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg"><link rel="stylesheet" href="../assets/css/style.css"></head>
+<body><header class="site-nav"><a class="nav-wordmark" href="../index.html"><span class="nav-mark">CE</span><span>Christian Educators<small>Global Network</small></span></a><button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-menu">☰<span class="visually-hidden">Menu</span></button><nav id="nav-menu" class="nav-links" aria-label="Main navigation"><a href="start_here.html">Start Here</a><a href="get_equipped.html">Get Equipped</a><a href="calendar.html">Calendar</a><a href="what_new.html">What's New</a><a href="about.html">About</a><a href="get_help.html">Get Help</a><span class="nav-actions"><a class="nav-login" href="member-login.html" data-nav-portal>Member Login</a><a class="nav-donate" href="donate.html">Donate</a></span></nav></header><main>
+<section class="page-hero"><p class="section-label">Donate</p><h1>Give hope to an educator today.</h1><p>Your gift supports, connects, and protects Christians serving in schools worldwide. Christian Educators Global Network is a 501(c)(3) religious non-profit—gifts are tax-deductible to the extent allowed by law.</p></section>
+<section class="content-section"><div class="portal-grid" style="grid-template-columns:1.1fr .9fr;">
+    <section class="form-panel" aria-labelledby="gift-heading">
+        <p class="section-label">Make a gift</p>
+        <h2 id="gift-heading">Choose your gift</h2>
+        <form data-demo-form data-success="donate-success" novalidate>
+            <fieldset class="field" style="border:0;padding:0;margin:0 0 1rem;">
+                <legend class="field-label" style="margin-bottom:.5rem;">Donation amount</legend>
+                <div class="amount-grid">
+                    <label class="amount-chip"><input type="radio" name="amount" value="25"><span>$25</span></label>
+                    <label class="amount-chip"><input type="radio" name="amount" value="50" checked><span>$50</span></label>
+                    <label class="amount-chip"><input type="radio" name="amount" value="100"><span>$100</span></label>
+                    <label class="amount-chip"><input type="radio" name="amount" value="250"><span>$250</span></label>
+                    <label class="amount-chip"><input type="radio" name="amount" value="500"><span>$500</span></label>
+                    <label class="amount-chip"><input type="radio" name="amount" value="other"><span>Other</span></label>
+                </div>
+            </fieldset>
+            <div class="form-grid">
+                <div class="field field-full"><label for="gift-custom">Or enter a custom amount (USD)</label><input id="gift-custom" name="custom_amount" type="number" min="1" step="1" placeholder="e.g. 75"></div>
+            </div>
+            <label class="toggle-pill"><input type="checkbox" name="monthly" checked> Make this a monthly gift</label>
+            <div class="form-grid">
+                <div class="field"><label for="gift-name">Your name *</label><input id="gift-name" name="name" type="text" autocomplete="name" required></div>
+                <div class="field"><label for="gift-email">Email address *</label><input id="gift-email" name="email" type="email" autocomplete="email" required></div>
+                <div class="field field-full"><label for="gift-designation">Designate my gift to</label><select id="gift-designation" name="designation"><option>Where most needed</option><option>Scholarships &amp; grants</option><option>Global outreach</option><option>Resource development</option></select></div>
+                <div class="field field-full checkbox-field"><input id="gift-cover" type="checkbox"><label for="gift-cover" style="font-weight:600;">Add 3% to help cover processing costs so more of my gift reaches educators</label></div>
+            </div>
+            <p class="form-error" hidden>Please share your name and a valid email, and choose an amount.</p>
+            <div class="action-row"><button class="action-button" type="submit">Give Now</button></div>
+        </form>
+        <div class="form-success" id="donate-success" hidden>Thank you for your generosity (demonstration mode).<p>No payment was processed. Before launch, connect Stripe Payment Links, PayPal, or your CRM's giving page here—never collect card details in site code.</p></div>
+    </section>
+    <aside class="form-panel" aria-label="Your gift at work">
+        <p class="section-label">Your gift at work</p>
+        <h2>What $50 can do</h2>
+        <div class="dash-status"><span>Resources</span><strong>Devotionals for 10 educators</strong></div>
+        <div class="dash-status"><span>Prayer</span><strong>Materials for a school prayer group</strong></div>
+        <div class="dash-status"><span>Protection</span><strong>Help fund a member's guidance</strong></div>
+        <p class="small-note" style="margin-top:1rem;">Illustrative examples—replace with your organization's real impact figures.</p>
+        <h2 style="margin-top:1.5rem;">Other ways to give</h2>
+        <p>Monthly partnership, employer matching, legacy gifts, and stock donations—see the <a href="generosity.html">Generosity page</a> or <a href="get_help.html">contact us</a>.</p>
+    </section>
+</div></section>
+<section class="content-section"><p class="form-note">Security note: this page is a front-end demonstration. Before launch, replace it with your giving provider's hosted checkout (Stripe, PayPal, or your CRM's donation page). Never handle card numbers in your own site code.</p></section>
+<footer class="site-footer"><div class="footer-grid"><div class="footer-about"><p class="footer-brand">Christian<br>Educators</p><p>A professional association of educators—supporting, connecting, and protecting Christians working in schools worldwide.</p></div><nav class="footer-col" aria-label="Explore links"><p class="footer-heading">Explore</p><a href="start_here.html">Start Here</a><a href="get_equipped.html">Get Equipped</a><a href="calendar.html">Calendar</a><a href="what_new.html">What's New</a></nav><nav class="footer-col" aria-label="Support links"><p class="footer-heading">Support</p><a href="membership.html">Membership</a><a href="member-login.html">Member Login</a><a href="donate.html">Donate</a><a href="generosity.html">Generosity</a></nav><nav class="footer-col" aria-label="Organization links"><p class="footer-heading">Organization</p><a href="about.html">About Us</a><a href="faq.html">FAQs</a><a href="get_help.html">Contact &amp; Help</a><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Use</a></nav></div><p class="footer-legal">Christian Educators Global Network is a 501(c)(3) Religious Non-Profit · © <span data-year>2026</span> Christian Educators Global Network. All rights reserved.</p></footer><script src="../assets/js/main.js"></script></body></html>
