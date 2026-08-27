@@ -1,0 +1,17 @@
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    line-height: 1.5;
+    color: #18243a;
+}
+
+.site-header, main {
+    max-width: 70rem;
+    margin: 0 auto;
+    padding: 1.25rem;
+}
+
+nav { display: flex; flex-wrap: wrap; gap: 1rem; }
+a { color: #0b5ea8; }
