@@ -1,17 +1,37 @@
 * { box-sizing: border-box; }
 
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    line-height: 1.5;
-    color: #18243a;
-}
+:root { --navy: #10233f; --ink: #16233a; --aqua: #2f9cab; --coral: #ed5a48; --cream: #f8f5ef; --sky: #bcebf0; }
+body { margin: 0; color: var(--ink); background: var(--cream); font-family: Arial, sans-serif; line-height: 1.5; }
+a { color: inherit; }
 
-.site-header, main {
-    max-width: 70rem;
-    margin: 0 auto;
-    padding: 1.25rem;
-}
+.welcome, .destinations, .quick-links, .site-footer { padding: clamp(3.5rem, 7vw, 6.5rem) max(1.5rem, calc((100vw - 70rem) / 2)); }
+.welcome { position: relative; overflow: hidden; text-align: center; color: #fff; background: var(--navy); }
+.welcome::before, .welcome::after { position: absolute; border-radius: 50%; content: ""; opacity: .22; }
+.welcome::before { width: 28rem; height: 28rem; top: -16rem; left: -9rem; background: var(--aqua); }
+.welcome::after { width: 22rem; height: 22rem; right: -10rem; bottom: -14rem; background: var(--coral); }
+.welcome > * { position: relative; z-index: 1; }
+.brand-mark { display: grid; width: 3.4rem; height: 3.4rem; margin: 0 auto 1.25rem; place-items: center; border-radius: 1rem 1rem 1rem .2rem; background: var(--coral); font-size: .85rem; font-weight: 800; }
+.eyebrow, .section-label { margin: 0 0 .75rem; color: var(--aqua); font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+h1, h2, p { margin-top: 0; }
+h1 { margin-bottom: .75rem; font-size: clamp(3rem, 7vw, 5.5rem); line-height: .95; }
+h2 { margin-bottom: 2.5rem; font-size: clamp(2rem, 4vw, 3.25rem); line-height: 1; }
+.intro { max-width: 48rem; margin: 0 auto; font-size: clamp(1.05rem, 2vw, 1.3rem); }
 
-nav { display: flex; flex-wrap: wrap; gap: 1rem; }
-a { color: #0b5ea8; }
+.destinations { text-align: center; background: #fff; }
+.destination-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
+.destination-card { position: relative; display: flex; min-height: 19rem; padding: 2rem; flex-direction: column; align-items: flex-start; border: 1px solid #dce2e7; border-radius: 1.5rem; text-align: left; text-decoration: none; transition: transform .2s ease, box-shadow .2s ease; }
+.destination-card:hover, .destination-card:focus-visible { transform: translateY(-.35rem); box-shadow: 0 1rem 2rem rgba(16,35,63,.14); }
+.start-card { background: #eaf8f8; }.membership-card { background: #fff0ec; }.home-card { background: #edf1fb; }
+.card-icon { width: 2.25rem; height: 2.25rem; margin-bottom: auto; fill: none; stroke: var(--navy); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.card-kicker { margin-bottom: .35rem; color: var(--aqua); font-weight: 800; }.membership-card .card-kicker { color: #c84335; }
+.destination-card strong { margin-bottom: .75rem; font-size: 1.8rem; }.card-arrow { position: absolute; right: 1.75rem; bottom: 1.25rem; color: var(--coral); font-size: 1.75rem; font-weight: 700; }
+
+.donate-callout { display: flex; max-width: 70rem; margin: 0 auto; padding: clamp(2rem, 4vw, 3.5rem) max(1.5rem, calc((100vw - 70rem) / 2)); align-items: center; justify-content: space-between; gap: 2rem; }
+.donate-callout h2 { margin-bottom: .75rem; }.donate-callout p:not(.section-label) { max-width: 38rem; margin-bottom: 0; color: #536275; }
+.donate-button { display: inline-block; flex: 0 0 auto; padding: .85rem 1.5rem; border-radius: 999px; color: #fff; background: var(--coral); font-weight: 800; text-decoration: none; }.donate-button:hover, .donate-button:focus-visible { color: var(--navy); background: var(--sky); }
+
+.quick-links { text-align: center; color: #fff; background: var(--coral); }.quick-links .section-label { color: var(--sky); }
+.quick-link-list { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; }.quick-link-list a { padding: .65rem 1.1rem; border: 1px solid rgba(255,255,255,.45); border-radius: 999px; text-decoration: none; font-weight: 700; }.quick-link-list a:hover, .quick-link-list a:focus-visible { color: var(--navy); border-color: var(--sky); background: var(--sky); }
+.site-footer { display: grid; gap: .8rem; text-align: center; color: #fff; background: var(--navy); }.site-footer p { margin: 0; }.footer-brand { font-size: 2rem; font-weight: 800; line-height: .8; }
+
+@media (max-width: 48rem) { .destination-grid { grid-template-columns: 1fr; }.destination-card { min-height: 15rem; }.donate-callout { align-items: flex-start; flex-direction: column; } }

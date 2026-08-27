@@ -7,19 +7,55 @@
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
-    <header class="site-header">
-        <nav aria-label="Main navigation">
-            <a href="index.html">Home</a>
-            <a href="pages/start_here.html">Start Here</a>
-            <a href="pages/about.html">About</a>
-            <a href="pages/membership.html">Membership</a>
-            <a href="pages/donate.html">Donate</a>
-        </nav>
-    </header>
     <main>
-        <h1>Christian Educators</h1>
-        <p>We support, connect, and protect Christian educators.</p>
+        <section class="welcome" aria-labelledby="welcome-heading">
+            <p class="brand-mark">CE</p>
+            <p class="eyebrow">Serving educators since 1953</p>
+            <h1 id="welcome-heading">Welcome</h1>
+            <p class="intro">A professional association of educators—supporting, connecting, and protecting Christians working in our schools.</p>
+        </section>
+
+        <section class="destinations" aria-labelledby="destinations-heading">
+            <p class="section-label">Choose your next step</p>
+            <h2 id="destinations-heading">Where would you like to go?</h2>
+            <div class="destination-grid">
+                <a class="destination-card start-card" href="pages/start_here.html">
+                    <svg class="card-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/><path d="m15 3 3 2-3 2"/></svg>
+                    <span class="card-kicker">New here?</span><strong>Start Here</strong><span>Learn who we are and how we can support you.</span><span class="card-arrow" aria-hidden="true">→</span>
+                </a>
+                <a class="destination-card membership-card" href="pages/membership.html">
+                    <svg class="card-icon" aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c.7-4 3.4-6 8-6s7.3 2 8 6"/><path d="M19 7v6M16 10h6"/></svg>
+                    <span class="card-kicker">Ready to join?</span><strong>Join / Membership</strong><span>Explore membership options and benefits.</span><span class="card-arrow" aria-hidden="true">→</span>
+                </a>
+                <a class="destination-card home-card" href="pages/member-login.html">
+                    <svg class="card-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8v10H3z"/><path d="M9 21v-6h6v6"/></svg>
+                    <span class="card-kicker">Already a member?</span><strong>Member Login</strong><span>Access member resources and continue where you left off.</span><span class="card-arrow" aria-hidden="true">→</span>
+                </a>
+            </div>
+        </section>
+
+        <section class="donate-callout" aria-labelledby="donate-heading">
+            <div>
+                <p class="section-label">Support the mission</p>
+                <h2 id="donate-heading">Help Christian educators thrive.</h2>
+                <p>Your gift helps us support, connect, and protect educators working in schools.</p>
+            </div>
+            <a class="donate-button" href="pages/donate.html">Donate</a>
+        </section>
+
+        <section class="quick-links" aria-labelledby="quick-links-heading">
+            <p class="section-label">Explore more</p>
+            <h2 id="quick-links-heading">Quick Links</h2>
+            <nav class="quick-link-list" aria-label="Quick links">
+                <a href="pages/membership.html">Join / Renew</a><a href="pages/get_equipped.html">Get Equipped</a><a href="pages/get_help.html">Get Help</a><a href="pages/generosity.html">Generosity</a><a href="pages/calender.html">Calendar</a><a href="pages/about.html">About Us</a>
+            </nav>
+        </section>
     </main>
+    <footer class="site-footer">
+        <p class="footer-brand">Christian<br>Educators</p>
+        <p>Christian Educators is a 501(c)(3) Religious Non-Profit</p>
+        <p><a href="pages/about.html">Privacy Policy</a> · © 2026 Christian Educators</p>
+    </footer>
     <script src="assets/js/main.js"></script>
 </body>
 </html>
