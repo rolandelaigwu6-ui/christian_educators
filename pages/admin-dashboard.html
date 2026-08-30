@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Christian Educators Global Network</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+<header class="site-nav">
+    <a class="nav-wordmark" href="../index.html"><span class="nav-mark">CE</span><span>Christian Educators<small>Global Network</small></span></a>
+    <nav class="nav-links" aria-label="Admin navigation"><a href="member-dashboard.html">Member Dashboard</a><a href="get_help.html">Get Help</a></nav>
+</header>
+<main data-admin-dashboard hidden>
+    <section class="content-section" data-admin-access-error hidden><div class="form-error">Your signed-in account does not have administrator access. Ask an existing administrator to grant access, then sign out and sign back in.</div></section>
+    <section class="member-banner">
+        <div><p class="section-label" style="color:#fff;">Administration</p><h1>Submission overview</h1><p>Review the latest applications, messages, and newsletter signups.</p></div>
+        <button class="action-button" type="button" data-logout="member-login.html">Log Out</button>
+    </section>
+    <div class="dash-grid">
+        <section class="dash-card"><p class="section-label">Applications</p><h2 data-admin-applications>0</h2><p>Membership applications received.</p></section>
+        <section class="dash-card"><p class="section-label">Messages</p><h2 data-admin-contacts>0</h2><p>Contact submissions received.</p></section>
+        <section class="dash-card"><p class="section-label">Newsletter</p><h2 data-admin-subscribers>0</h2><p>Active newsletter subscribers.</p></section>
+    </div>
+    <section class="content-section soft-section admin-section">
+        <div class="form-panel">
+            <p class="section-label">Access management</p>
+            <h2>Grant administrator access</h2>
+            <p>The user must already have an account. This gives them access to this dashboard.</p>
+            <form id="grant-admin-form" novalidate>
+                <div class="form-grid"><div class="field"><label for="admin-email">User email address</label><input id="admin-email" name="email" type="email" autocomplete="email" required></div></div>
+                <p class="form-error" hidden></p>
+                <p class="form-success" hidden></p>
+                <div class="action-row"><button class="action-button" type="submit">Grant Admin Access</button></div>
+            </form>
+        </div>
+    </section>
+    <section class="content-section admin-section">
+        <p class="section-label">Membership</p><h2>Latest applications</h2>
+        <div class="admin-table-wrap"><table id="admin-applications"><thead><tr><th>Name</th><th>Email</th><th>Tier</th><th>Country</th><th>Received</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="content-section soft-section admin-section">
+        <p class="section-label">Contact</p><h2>Latest messages</h2>
+        <div class="admin-table-wrap"><table id="admin-contacts"><thead><tr><th>Name</th><th>Email</th><th>Topic</th><th>Message</th><th>Received</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="content-section admin-section">
+        <p class="section-label">Newsletter</p><h2>Latest subscribers</h2>
+        <div class="admin-table-wrap"><table id="admin-subscribers"><thead><tr><th>First name</th><th>Email</th><th>Subscribed</th></tr></thead><tbody></tbody></table></div>
+    </section>
+</main>
+<script src="../assets/js/main.js"></script>
+</body>
+</html>

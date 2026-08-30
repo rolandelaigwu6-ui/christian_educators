@@ -1,0 +1,15 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+
+# Python and local data
+back_end/.venv/
+back_end/__pycache__/
+back_end/*.db
+back_end/*.log
+
+# Editor and operating system files
+.vscode/
+.DS_Store
+Thumbs.db

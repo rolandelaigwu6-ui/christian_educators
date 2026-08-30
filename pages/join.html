@@ -5,14 +5,14 @@
 <section class="content-section"><div class="form-panel">
     <h2>Membership application</h2>
     <p>Fields marked * are required.</p>
-    <form data-demo-form data-success="join-success" novalidate>
+    <form id="join-form" novalidate>
         <fieldset class="field" style="border:0;padding:0;margin:0 0 1rem;">
             <legend class="field-label" style="margin-bottom:.5rem;">1. Choose your membership *</legend>
             <div class="amount-grid">
-                <label class="amount-chip"><input type="radio" name="tier" value="basic"><span>Basic<br>$49 / yr</span></label>
-                <label class="amount-chip"><input type="radio" name="tier" value="coverage" checked><span>With Coverage<br>$199 / yr</span></label>
-                <label class="amount-chip"><input type="radio" name="tier" value="student"><span>Student<br>$19 / yr</span></label>
-                <label class="amount-chip"><input type="radio" name="tier" value="retired"><span>Retired<br>$39 / yr</span></label>
+                <label class="amount-chip"><input type="radio" name="tier" value="basic"><span>Basic<br>₦65,700 / yr</span></label>
+                <label class="amount-chip"><input type="radio" name="tier" value="coverage" checked><span>With Coverage<br>₦266,700 / yr</span></label>
+                <label class="amount-chip"><input type="radio" name="tier" value="student"><span>Student<br>₦25,500 / yr</span></label>
+                <label class="amount-chip"><input type="radio" name="tier" value="retired"><span>Retired<br>₦52,300 / yr</span></label>
                 <label class="amount-chip"><input type="radio" name="tier" value="gift"><span>Gift a membership</span></label>
                 <label class="amount-chip"><input type="radio" name="tier" value="unsure"><span>Help me choose</span></label>
             </div>
@@ -26,9 +26,10 @@
             <div class="field"><label for="join-school">School / organization</label><input id="join-school" name="organization" type="text" autocomplete="organization"></div>
             <div class="field field-full checkbox-field"><input id="join-consent" type="checkbox" required><label for="join-consent" style="font-weight:600;">I agree to the <a href="terms.html">Terms of Use</a> and <a href="privacy.html">Privacy Policy</a>, and I would like to receive encouragement and updates. *</label></div>
         </div>
+        <p class="form-error" hidden></p>
         <div class="action-row"><button class="action-button" type="submit">Submit Application</button><a class="action-button alt" href="membership.html">Compare tiers first</a></div>
     </form>
-    <div class="form-success" id="join-success" hidden>Application received (demonstration mode).<p>In production, this connects to your membership platform for secure account creation and to a payment provider for dues. Our member-care team would reach out within two business days.</p></div>
+    <div class="form-success" id="join-success" hidden>Application received.<p>Our member-care team will contact you about next steps.</p></div>
 </div></section>
 </main>
 <footer class="site-footer"><div class="footer-grid"><div class="footer-about"><p class="footer-brand">Christian<br>Educators</p><p>A professional association of educators—supporting, connecting, and protecting Christians working in schools worldwide.</p></div><nav class="footer-col" aria-label="Explore links"><p class="footer-heading">Explore</p><a href="start_here.html">Start Here</a><a href="get_equipped.html">Get Equipped</a><a href="calendar.html">Calendar</a><a href="what_new.html">What's New</a></nav><nav class="footer-col" aria-label="Support links"><p class="footer-heading">Support</p><a href="membership.html">Membership</a><a href="member-login.html">Member Login</a><a href="donate.html">Donate</a><a href="generosity.html">Generosity</a></nav><nav class="footer-col" aria-label="Organization links"><p class="footer-heading">Organization</p><a href="about.html">About Us</a><a href="faq.html">FAQs</a><a href="get_help.html">Contact &amp; Help</a><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Use</a></nav></div><p class="footer-legal">Christian Educators Global Network is a 501(c)(3) Religious Non-Profit · © <span data-year>2026</span> Christian Educators Global Network. All rights reserved.</p></footer><script src="../assets/js/main.js"></script></body></html>

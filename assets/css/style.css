@@ -55,6 +55,7 @@ h2 { margin-bottom: 2.5rem; font-size: clamp(2rem, 4vw, 3.25rem); line-height: 1
 
 .site-nav { display: flex; max-width: 70rem; margin: 0 auto; padding: 1.1rem 1.5rem; align-items: center; justify-content: space-between; gap: 1rem; }.site-nav a { font-weight: 800; text-decoration: none; }.site-nav .nav-links { display: flex; flex-wrap: wrap; gap: 1rem; }.nav-wordmark { color: var(--coral); }
 .page-hero { padding: clamp(3.5rem, 8vw, 7rem) max(1.5rem, calc((100vw - 70rem) / 2)); color: #fff; background: var(--navy); }.page-hero h1 { max-width: 50rem; }.page-hero p:last-child { max-width: 42rem; margin-bottom: 0; font-size: 1.15rem; }
+.back-button { display: inline-flex; margin: 1rem max(1.5rem, calc((100vw - 70rem) / 2)); padding: .55rem .9rem; align-items: center; border: 1px solid #c8d2dc; border-radius: 999px; color: var(--navy); background: #fff; font: inherit; font-weight: 800; cursor: pointer; }.back-button:hover, .back-button:focus-visible { border-color: var(--aqua); background: #eaf8f8; }
 .content-section { padding: clamp(3rem, 7vw, 6rem) max(1.5rem, calc((100vw - 70rem) / 2)); }.content-section h2 { margin-bottom: 1rem; }.content-section > p { max-width: 45rem; }.soft-section { background: #eaf8f8; }.warm-section { background: #fff0ec; }.dark-section { color: #fff; background: var(--navy); }.dark-section .section-label { color: var(--sky); }
 .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 2rem; }.info-grid article { padding: 1.7rem; border-radius: 1.25rem; background: #fff; box-shadow: 0 .4rem 1.5rem rgba(16,35,63,.08); }.info-grid h3 { margin: .4rem 0 .7rem; font-size: 1.35rem; }.info-grid p { margin-bottom: 0; color: #536275; }.info-grid .number { color: var(--coral); font-size: .85rem; font-weight: 800; letter-spacing: .1em; }
 .action-row { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.5rem; }.action-button { display: inline-block; padding: .8rem 1.2rem; border-radius: 999px; color: #fff; background: var(--coral); font-weight: 800; text-decoration: none; }.action-button.alt { color: var(--navy); background: var(--sky); }.action-button[aria-disabled="true"] { opacity: .7; cursor: not-allowed; }.feature-quote { max-width: 50rem; margin: 0 auto; font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: 800; line-height: 1.2; text-align: center; }.small-note { color: #536275; font-size: .9rem; }.dark-section .small-note { color: var(--sky); }
@@ -125,6 +126,14 @@ h2 { margin-bottom: 2.5rem; font-size: clamp(2rem, 4vw, 3.25rem); line-height: 1
 .dash-status strong { color: var(--navy); }
 @media (max-width: 56rem) { .dash-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 40rem) { .dash-grid { grid-template-columns: 1fr; }.dash-card.wide { grid-column: auto; } }
+
+/* ============ ADMIN DASHBOARD ============ */
+.admin-section h2 { margin-bottom: 1.5rem; }
+.admin-table-wrap { overflow-x: auto; border-radius: 1rem; background: #fff; box-shadow: 0 .4rem 1.5rem rgba(16,35,63,.07); }
+.admin-table-wrap table { width: 100%; min-width: 44rem; border-collapse: collapse; }
+.admin-table-wrap th, .admin-table-wrap td { padding: .85rem 1rem; border-bottom: 1px solid #e6ebf1; text-align: left; vertical-align: top; }
+.admin-table-wrap th { color: #fff; background: var(--navy); font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; }
+.admin-table-wrap td { max-width: 24rem; color: #536275; overflow-wrap: anywhere; }
 
 /* ============ PRICING TIERS + COMPARISON ============ */
 .tier-grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(3, 1fr); align-items: stretch; }
