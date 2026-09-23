@@ -45,6 +45,24 @@ a **verified sender** or sit on a domain authenticated with SPF/DKIM/DMARC. Brev
 unverified senders even with correct credentials. See the comments in
 `back_end/.env.example` for the details.
 
+### Database
+
+`DATABASE_URL` defaults to `sqlite:///./christian_educators.db` — a SQLite file resolved
+relative to the **working directory**, so starting the backend from a different directory
+opens a different database. That is fine for local development; set `DATABASE_URL`
+explicitly for anything real.
+
+**Setting it to a PostgreSQL URL does not work on its own yet.** Three things are missing:
+
+1. No PostgreSQL driver is installed. Add `psycopg[binary]` to `back_end/pyproject.toml`.
+2. The startup compatibility check in the `lifespan` handler uses `PRAGMA table_info`,
+   which is SQLite-only syntax and fails against PostgreSQL.
+3. There is no migration tool — schema changes are hand-written `ALTER TABLE` statements.
+
+Items 2 and 3 are best resolved together, by adopting a migration tool.
+
+### Payments
+
 `PAYMENTS_ENABLED` is deliberately `false`. Do not enable it until the organisation's Paystack account is approved, the public domain is live over HTTPS, and Paystack webhooks have been verified.
 
 ## Launch checklist
@@ -52,7 +70,7 @@ unverified senders even with correct credentials. See the comments in
 - Supply verified organisation name, contact details, domain, legal status, privacy terms, and membership-benefit wording.
 - Replace all sample testimonials, articles, events, impact statements, and placeholder contact information.
 - Verify the production sending domain in Brevo using SPF/DKIM records.
-- Deploy the frontend and API using HTTPS, a managed database, backups, and a secrets manager.
+- Deploy the frontend and API using HTTPS, a managed database, backups, and a secrets manager. A PostgreSQL driver and a migration tool are prerequisites — see Configuration → Database.
 - In production, put the API behind the same HTTPS domain (or a trusted reverse proxy) so the frontend can use same-origin `/auth` and `/admin` requests.
 - Restrict CORS to the production frontend URL and remove local-development origins.
 - Configure the organisation's Paystack Live account, webhook URL, and Live Secret Key only on the production host.

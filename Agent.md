@@ -431,9 +431,12 @@ or a real gap.
    Login has a timing defence but nothing against brute force or form spam.
 7. **No data-export or account-deletion path**, although the privacy policy promises users may
    "request access to, correction of, or deletion of" their information.
-8. **`DATABASE_URL` is hardcoded** to `sqlite:///./christian_educators.db`
-   (`back_end.py:30`) and is not read from the environment. Production will need a managed
-   database and a URL from config.
+8. **PostgreSQL is still not usable.** `DATABASE_URL` is now read from the environment
+   (`back_end.py:50`), and the engine no longer assumes SQLite when it is built
+   (`engine_options()`, `back_end.py:64`). Two blockers remain, and neither is solved by
+   configuration: **no PostgreSQL driver is installed**, and the startup compatibility check
+   in `lifespan` uses SQLite-only `PRAGMA table_info` syntax (`back_end.py:589`). Both belong
+   with item 9 — a migration tool is the natural place to fix the second one.
 9. **No migration system.** See §4.
 10. **Email failures surface to the user; admin notifications are the remaining gap.** A failed
     send returns `False`, and the four client-facing flows (register, membership, contact,
