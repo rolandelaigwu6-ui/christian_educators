@@ -4,11 +4,13 @@ from email.message import EmailMessage
 import hashlib
 import json
 import os
+from pathlib import Path
 import secrets
 import smtplib
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from dotenv import load_dotenv
 from fastapi import Cookie, FastAPI, HTTPException, Request as FastAPIRequest, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -27,7 +29,25 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 
-DATABASE_URL = "sqlite:///./christian_educators.db"
+# Load the .env file before any configuration below is read. Every setting on this
+# page is captured at import time, so this must run first.
+#
+# The path is resolved from this file's location rather than the working directory,
+# so the app behaves the same however it is started. ENV_FILE overrides it, which is
+# how the tests point at a temporary file instead of a developer's real .env.
+#
+# load_dotenv does not overwrite variables that are already set, so exporting a value
+# in the shell still overrides the file.
+load_dotenv(os.getenv("ENV_FILE") or Path(__file__).with_name(".env"))
+
+
+# Defaults to a SQLite file resolved relative to the working directory, so starting the
+# app from a different directory opens a different database. Fine locally; set
+# DATABASE_URL in the environment for anything real.
+#
+# Reading this from config does NOT by itself make PostgreSQL usable -- see README
+# section Configuration for what is still missing.
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./christian_educators.db")
 FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://127.0.0.1:5500")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
 SMTP_HOST = os.getenv("SMTP_HOST")
@@ -41,10 +61,24 @@ PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
 PAYMENTS_ENABLED = os.getenv("PAYMENTS_ENABLED", "false").lower() == "true"
 
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False},
-)
+def engine_options(database_url: str) -> dict:
+    """Connect arguments to hand to `create_engine` for `database_url`.
+
+    `check_same_thread` is a SQLite-only argument. By default SQLite refuses to let a
+    connection be used from any thread but the one that created it, and FastAPI runs
+    synchronous route bodies in a threadpool -- so for SQLite it has to be relaxed.
+    Every other driver rejects the argument outright with a TypeError, which would turn
+    a configuration change into a startup crash.
+
+    Kept separate from the call below so the rule can be tested without installing a
+    driver for the non-SQLite case.
+    """
+    if database_url.startswith("sqlite"):
+        return {"connect_args": {"check_same_thread": False}}
+    return {}
+
+
+engine = create_engine(DATABASE_URL, **engine_options(DATABASE_URL))
 
 SessionLocal = sessionmaker(bind=engine)
 password_hash = PasswordHash.recommended()
@@ -190,6 +224,9 @@ class RegistrationResponse(BaseModel):
     first_name: str
     email: EmailStr
     email_verified: bool
+    # False means the account was created but the verification email could not be
+    # sent, so the client must not tell the user to go and check their inbox.
+    email_sent: bool
 
 
 class EmailRequest(BaseModel):
@@ -293,9 +330,10 @@ def create_verification_token(session, user_id: int):
     return raw_token
 
 
-def print_development_verification_link(email: str, token: str):
+def send_verification_email(email: str, token: str) -> bool:
+    """Email a verification link. Returns True only when it was actually sent."""
     verification_url = f"{FRONTEND_BASE_URL}/pages/verify-email.html?token={token}"
-    send_email(
+    return send_email(
         email,
         "Verify your Christian Educators account",
         (
@@ -307,9 +345,10 @@ def print_development_verification_link(email: str, token: str):
     )
 
 
-def send_password_reset_email(email: str, token: str):
+def send_password_reset_email(email: str, token: str) -> bool:
+    """Email a password-reset link. Returns True only when it was actually sent."""
     reset_url = f"{FRONTEND_BASE_URL}/pages/reset-password.html?token={token}"
-    send_email(
+    return send_email(
         email,
         "Reset your Christian Educators password",
         (
@@ -322,16 +361,42 @@ def send_password_reset_email(email: str, token: str):
 
 
 def send_email(recipient: str | None, subject: str, body: str):
-    """Send SMTP email, or print it locally when SMTP has not been configured."""
+    """Send an email over SMTP, returning True only when it was handed to the server.
+
+    With no SMTP configured the message is printed to the terminal instead. That is
+    useful during local development, but it is NOT a send -- a caller that tells a
+    user "check your email" must check the return value first.
+
+    This function deliberately does not raise. A mail outage must not fail a request
+    whose data has already been stored; making the failure visible is the caller's job.
+    """
     if not recipient:
+        # A blank recipient is a configuration mistake, not a delivery failure, and
+        # it is otherwise completely invisible -- no mail, no banner, no warning on
+        # any surface. Say so, so a blank ADMIN_NOTIFICATION_EMAIL is noticed rather
+        # than silently dropping every notification forever.
+        print("\n=== EMAIL NOT SENT: no recipient address ===")
+        print(f"Subject: {subject}")
+        print("Set ADMIN_NOTIFICATION_EMAIL in back_end/.env if this was an admin notice.")
+        print("=== end of unsent email ===\n")
         return False
 
     if not SMTP_HOST or not SMTP_FROM_EMAIL:
-        print("\n--- DEVELOPMENT EMAIL ---")
+        missing = [
+            name
+            for name, value in (
+                ("SMTP_HOST", SMTP_HOST),
+                ("SMTP_FROM_EMAIL", SMTP_FROM_EMAIL),
+            )
+            if not value
+        ]
+        print("\n=== EMAIL NOT SENT: SMTP is not configured ===")
+        print(f"Missing setting(s): {', '.join(missing)}")
+        print("Add them to back_end/.env. Until then no mail reaches a real inbox.")
         print(f"To: {recipient}")
         print(f"Subject: {subject}")
         print(body)
-        print("-------------------------\n")
+        print("=== end of unsent email ===\n")
         return False
 
     message = EmailMessage()
@@ -350,8 +415,43 @@ def send_email(recipient: str | None, subject: str, body: str):
         return True
     except (OSError, smtplib.SMTPException) as error:
         # Form data remains saved even if a provider is temporarily unavailable.
-        print(f"Email delivery failed for {recipient}: {error}")
+        # Printed as a distinct banner because this is the message that explains a
+        # user's "I never got the email" report -- "535 5.7.8 Authentication failed"
+        # here means the SMTP key or login is wrong, not that the code is broken.
+        print("\n=== EMAIL NOT SENT: delivery failed ===")
+        print(f"To: {recipient}")
+        print(f"Server said: {error}")
+        print("=== end of email failure ===\n")
         return False
+
+
+def send_admin_notification(
+    subject: str, what_happened: str, name: str | None, email: str
+) -> bool:
+    """Tell the admin address that something was submitted.
+
+    Carries the submitter's name and email, and deliberately NOT the body of their
+    message. A contact submission can hold a prayer request or a job dispute; an
+    email copy would put that text in an inbox, outside the database and outside the
+    admin login. The detail stays behind /admin/... -- this message is a nudge to go
+    and look, not a copy of the record.
+
+    There is deliberately no parameter for message text, so a caller cannot leak it
+    by accident. Adding one would be a privacy decision, not a convenience.
+
+    Every caller discards the return value: whether our internal notification failed
+    is not the submitter's business.
+    """
+    return send_email(
+        ADMIN_NOTIFICATION_EMAIL,
+        subject,
+        (
+            f"{what_happened}\n\n"
+            f"Name:  {name.strip() if name else '(not given)'}\n"
+            f"Email: {email}\n\n"
+            "Review it in the admin dashboard."
+        ),
+    )
 
 
 def paystack_request(path: str, method: str = "GET", payload=None):
@@ -541,8 +641,12 @@ async def add_security_headers(request: FastAPIRequest, call_next):
 
 @app.get("/health")
 def health_check():
+    # mail_configured is a global signal, identical for every caller, so it is safe
+    # to expose. It answers "would an email actually be sent?" -- which the routes
+    # that must not leak account existence cannot answer per-request.
     return {
         "status": "ok",
+        "mail_configured": bool(SMTP_HOST and SMTP_FROM_EMAIL),
         "payments_configured": bool(PAYSTACK_SECRET_KEY),
         "payments_enabled": PAYMENTS_ENABLED,
     }
@@ -799,7 +903,9 @@ def submit_membership_application(details: MembershipApplicationRequest):
         session.add(application)
         session.commit()
 
-    send_email(
+    # email_sent reports the submitter's confirmation copy. The admin notification is
+    # internal and its failure is not the applicant's concern.
+    email_sent = send_email(
         email,
         "We received your membership application",
         (
@@ -807,12 +913,16 @@ def submit_membership_application(details: MembershipApplicationRequest):
             "Our member-care team will review your application and contact you about next steps."
         ),
     )
-    send_email(
-        ADMIN_NOTIFICATION_EMAIL,
+    send_admin_notification(
         "New membership application",
-        "A new membership application was submitted. Review it in the admin dashboard.",
+        "A new membership application was submitted.",
+        f"{details.first_name} {details.last_name}",
+        email,
     )
-    return {"message": "Your membership application has been received."}
+    return {
+        "message": "Your membership application has been received.",
+        "email_sent": email_sent,
+    }
 
 
 @app.post("/contact-submissions", status_code=status.HTTP_201_CREATED)
@@ -830,17 +940,21 @@ def submit_contact_form(details: ContactSubmissionRequest):
         session.add(submission)
         session.commit()
 
-    send_email(
+    email_sent = send_email(
         email,
         "We received your message",
         "Thank you for contacting Christian Educators Global Network. Our member-care team will respond within two business days.",
     )
-    send_email(
-        ADMIN_NOTIFICATION_EMAIL,
+    send_admin_notification(
         "New contact message",
-        "A new contact message was submitted. Review it in the admin dashboard.",
+        "A new contact message was submitted.",
+        details.name,
+        email,
     )
-    return {"message": "Your message has been received."}
+    return {
+        "message": "Your message has been received.",
+        "email_sent": email_sent,
+    }
 
 
 @app.post("/newsletter-subscriptions", status_code=status.HTTP_201_CREATED)
@@ -855,7 +969,12 @@ def subscribe_to_newsletter(details: NewsletterSubscriptionRequest):
         )
 
         if existing_subscriber:
-            return {"message": "This email is already subscribed."}
+            # No mail is sent on the repeat path; reported explicitly so clients can
+            # rely on the field always being present.
+            return {
+                "message": "This email is already subscribed.",
+                "email_sent": False,
+            }
 
         subscriber = NewsletterSubscriber(
             email=email,
@@ -865,17 +984,21 @@ def subscribe_to_newsletter(details: NewsletterSubscriptionRequest):
         session.add(subscriber)
         session.commit()
 
-    send_email(
+    email_sent = send_email(
         email,
         "Welcome to the Christian Educators newsletter",
         "You are now subscribed to receive encouragement and updates from Christian Educators Global Network.",
     )
-    send_email(
-        ADMIN_NOTIFICATION_EMAIL,
+    send_admin_notification(
         "New newsletter subscriber",
-        "A new newsletter subscription was received. Review it in the admin dashboard.",
+        "A new newsletter subscription was received.",
+        details.first_name,
+        email,
     )
-    return {"message": "You are subscribed to the newsletter."}
+    return {
+        "message": "You are subscribed to the newsletter.",
+        "email_sent": email_sent,
+    }
 
 
 @app.post(
@@ -909,9 +1032,31 @@ def register_account(details: RegistrationRequest):
         session.refresh(user)
 
         token = create_verification_token(session, user.id)
-        print_development_verification_link(user.email, token)
+        email_sent = send_verification_email(user.email, token)
 
-        return user
+        # The admin is told an account was created; previously a registration was
+        # invisible until someone opened the dashboard. Best-effort like every other
+        # send -- the account exists either way.
+        #
+        # Caveat: there is no rate limiting on this route, so registrations can be
+        # scripted to generate one admin email each. See Agent.md, known debt.
+        send_admin_notification(
+            "New account registered",
+            "A new account was registered.",
+            f"{user.first_name} {user.last_name}",
+            user.email,
+        )
+
+        # The account is saved either way. Sending email is best-effort, but the
+        # client must be told when it failed rather than being told to check an
+        # inbox that will never receive anything.
+        return {
+            "id": user.id,
+            "first_name": user.first_name,
+            "email": user.email,
+            "email_verified": user.email_verified,
+            "email_sent": email_sent,
+        }
 
 
 @app.post("/auth/request-email-verification")
@@ -925,7 +1070,10 @@ def request_email_verification(details: EmailRequest):
 
         if user and not user.email_verified:
             token = create_verification_token(session, user.id)
-            print_development_verification_link(user.email, token)
+            # Return value deliberately unused: this response must stay identical
+            # whether or not the account exists, or it would leak which addresses
+            # are registered.
+            send_verification_email(user.email, token)
 
     # Same response whether the email exists or not.
     return {
@@ -944,6 +1092,8 @@ def request_password_reset(details: EmailRequest):
         user = session.scalar(select(User).where(User.email == email))
         if user:
             token = create_password_reset_token(session, user.id)
+            # Return value deliberately unused: this response must stay identical
+            # whether or not the account exists (see the note above the return).
             send_password_reset_email(user.email, token)
 
     # Do not reveal whether an email address has an account.

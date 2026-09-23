@@ -146,9 +146,19 @@
                     return;
                 }
 
+                // The account is created either way, so reveal which outcome actually
+                // happened instead of always claiming a verification email is coming.
+                // Only an explicit false shows the warning, so an older API that does
+                // not report email_sent still reads as success.
+                var registration = await response.json();
+
                 error.hidden = true;
                 createAccountForm.hidden = true;
-                document.getElementById("create-account-success").hidden = false;
+                document.getElementById(
+                    registration.email_sent === false
+                        ? "create-account-warning"
+                        : "create-account-success"
+                ).hidden = false;
             } catch (requestError) {
                 error.textContent = "The account service is unavailable. Please try again.";
                 error.hidden = false;
@@ -423,7 +433,7 @@
         });
     });
 
-    function connectPublicForm(formId, endpoint, getPayload, successId, unavailableMessage, onSuccess) {
+    function connectPublicForm(formId, endpoint, getPayload, successId, warningId, unavailableMessage, onSuccess) {
         var form = document.getElementById(formId);
         if (!form) {
             return;
@@ -453,18 +463,28 @@
                     return;
                 }
 
+                var result = await response.json();
+
                 if (onSuccess) {
-                    await onSuccess(form);
+                    await onSuccess(form, result);
                     return;
                 }
 
                 if (error) {
                     error.hidden = true;
                 }
-                if (success) {
-                    form.hidden = true;
-                    success.hidden = false;
-                    success.scrollIntoView({ behavior: "smooth", block: "center" });
+
+                // The submission is saved either way, so a confirmation email that
+                // failed must not be reported as one that is on its way. Only an
+                // explicit false shows the warning, so an older API that does not
+                // report email_sent still reads as success.
+                var warning = warningId ? document.getElementById(warningId) : null;
+                var panel = (result.email_sent === false && warning) ? warning : success;
+
+                form.hidden = true;
+                if (panel) {
+                    panel.hidden = false;
+                    panel.scrollIntoView({ behavior: "smooth", block: "center" });
                 }
             } catch (requestError) {
                 if (error) {
@@ -491,6 +511,7 @@
             };
         },
         "join-success",
+        "join-warning",
         "The membership application service is unavailable. Please try again."
     );
 
@@ -506,6 +527,7 @@
             };
         },
         "contact-success",
+        "contact-warning",
         "The contact service is unavailable. Please try again."
     );
 
@@ -519,6 +541,7 @@
             };
         },
         "newsletter-success",
+        "newsletter-warning",
         "The newsletter service is unavailable. Please try again."
     );
 

@@ -19,7 +19,31 @@ Open `http://127.0.0.1:5500`.
 
 ## Configuration
 
-Copy `back_end/.env.example` into a private local environment or set the listed variables in the terminal before starting the API. Never commit real API keys, SMTP keys, passwords, or the SQLite database.
+Backend settings come from two places, in this order:
+
+1. **Real environment variables** — anything exported in the shell wins.
+2. **`back_end/.env`** — created by copying `back_end/.env.example`. It is read
+   automatically at startup and is gitignored.
+
+```bash
+cp back_end/.env.example back_end/.env
+```
+
+Never commit real API keys, SMTP keys, passwords, or the SQLite database.
+
+### Email
+
+Email is sent through Brevo's SMTP relay. **Until `SMTP_HOST` and `SMTP_FROM_EMAIL` are
+both set, no email is sent at all** — each message is printed to the backend terminal
+instead. `GET /health` reports `"mail_configured": false` in that state, so check it first
+if mail is not arriving.
+
+Setting those two variables is not enough on its own. `SMTP_PASSWORD` must be the **SMTP
+key**, `SMTP_USERNAME` is the **SMTP login** (which may be a generated
+`...@smtp-brevo.com` address rather than your signup email), and `SMTP_FROM_EMAIL` must be
+a **verified sender** or sit on a domain authenticated with SPF/DKIM/DMARC. Brevo rejects
+unverified senders even with correct credentials. See the comments in
+`back_end/.env.example` for the details.
 
 `PAYMENTS_ENABLED` is deliberately `false`. Do not enable it until the organisation's Paystack account is approved, the public domain is live over HTTPS, and Paystack webhooks have been verified.
 
