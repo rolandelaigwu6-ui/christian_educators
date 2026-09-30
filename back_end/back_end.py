@@ -178,6 +178,27 @@ class MembershipApplication(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class MembershipApplicationProfile(Base):
+    # A companion table keeps existing applications intact without adding columns
+    # to their table. create_all creates it on both fresh and existing databases.
+    __tablename__ = "membership_application_profiles"
+
+    application_id: Mapped[int] = mapped_column(ForeignKey("membership_applications.id"), primary_key=True)
+    phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    location: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    church: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    faith_agreement: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class MembershipApplicationConsent(Base):
+    # Consent is recorded separately so rolling out the optional-updates control
+    # does not alter existing profile rows or infer consent for older applications.
+    __tablename__ = "membership_application_consents"
+
+    application_id: Mapped[int] = mapped_column(ForeignKey("membership_applications.id"), primary_key=True)
+    terms_accepted: Mapped[bool] = mapped_column(Boolean)
+
+
 class ContactSubmission(Base):
     __tablename__ = "contact_submissions"
 
@@ -274,6 +295,11 @@ class MembershipApplicationRequest(BaseModel):
     role: str | None = Field(default=None, max_length=100)
     organization: str | None = Field(default=None, max_length=255)
     marketing_consent: bool
+    phone: str | None = Field(default=None, max_length=40)
+    location: str | None = Field(default=None, max_length=150)
+    church: str | None = Field(default=None, max_length=255)
+    faith_agreement: bool = False
+    terms_accepted: bool | None = None
 
 
 class ContactSubmissionRequest(BaseModel):
@@ -337,7 +363,7 @@ def send_verification_email(email: str, token: str) -> bool:
         email,
         "Verify your Christian Educators account",
         (
-            "Welcome to Christian Educators Global Network.\n\n"
+            "Welcome to Core Christian Educators Global Network.\n\n"
             "Verify your email address by opening this link within one hour:\n"
             f"{verification_url}\n\n"
             "If you did not create this account, you can ignore this email."
@@ -660,21 +686,15 @@ def initialize_payment(details: PaymentInitializationRequest):
             detail="Online payments are temporarily unavailable.",
         )
 
-    membership_prices = {
-        "basic": 65700,
-        "coverage": 266700,
-        "student": 25500,
-        "retired": 52300,
-    }
     email = str(details.email).lower()
 
     if details.payment_type == "membership":
-        if details.tier not in membership_prices:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="Select a paid membership tier.",
-            )
-        amount_ngn = membership_prices[details.tier]
+        # COCEGN supplied tier names, but has not approved fees. Never charge the
+        # old sample prices, even if donation checkout is enabled later.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Membership fees are awaiting confirmation. Please contact COCEGN.",
+        )
     else:
         if not details.donation_amount:
             raise HTTPException(
@@ -781,10 +801,28 @@ def list_membership_applications(
             .order_by(MembershipApplication.id.desc())
             .limit(100)
         ).all()
+        profiles = {
+            profile.application_id: profile
+            for profile in session.scalars(select(MembershipApplicationProfile).where(
+                MembershipApplicationProfile.application_id.in_([item.id for item in applications])
+            )).all()
+        }
+        consents = {
+            consent.application_id: consent
+            for consent in session.scalars(select(MembershipApplicationConsent).where(
+                MembershipApplicationConsent.application_id.in_([item.id for item in applications])
+            )).all()
+        }
         return [
             {
                 "id": item.id,
                 "name": f"{item.first_name} {item.last_name}",
+                "phone": profiles[item.id].phone if item.id in profiles else None,
+                "location": profiles[item.id].location if item.id in profiles else None,
+                "church": profiles[item.id].church if item.id in profiles else None,
+                "faith_agreement": profiles[item.id].faith_agreement if item.id in profiles else None,
+                "terms_accepted": consents[item.id].terms_accepted if item.id in consents else None,
+                "marketing_consent": item.marketing_consent,
                 "email": item.email,
                 "tier": item.tier,
                 "country": item.country,
@@ -871,7 +909,10 @@ def grant_administrator_access(
 
 @app.post("/membership-applications", status_code=status.HTTP_201_CREATED)
 def submit_membership_application(details: MembershipApplicationRequest):
-    allowed_tiers = {"basic", "coverage", "student", "retired", "gift", "unsure"}
+    # Keep legacy submissions compatible; only the supplied tiers are offered in
+    # the public UI. Existing applications are not relabelled or re-priced.
+    supplied_tiers = {"bronze", "silver", "gold", "diamond"}
+    allowed_tiers = supplied_tiers | {"basic", "coverage", "student", "retired", "gift", "unsure"}
     email = str(details.email).lower()
 
     if details.tier not in allowed_tiers:
@@ -880,7 +921,20 @@ def submit_membership_application(details: MembershipApplicationRequest):
             detail="Select a valid membership option.",
         )
 
-    if not details.marketing_consent:
+    if details.tier in supplied_tiers and not details.faith_agreement:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Please confirm that you support COCEGN's mission and Biblical values.",
+        )
+
+    # Old clients used a combined checkbox. New clients separate application
+    # consent from optional news, without changing already-saved applications.
+    terms_accepted = (
+        details.terms_accepted if details.terms_accepted is not None
+        else details.marketing_consent if details.tier not in supplied_tiers
+        else False
+    )
+    if not terms_accepted:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="You must accept the Terms of Use and Privacy Policy.",
@@ -897,10 +951,22 @@ def submit_membership_application(details: MembershipApplicationRequest):
             organization=(
                 details.organization.strip() if details.organization else None
             ),
-            marketing_consent=True,
+            marketing_consent=details.marketing_consent,
             created_at=now_utc(),
         )
         session.add(application)
+        session.flush()
+        session.add(MembershipApplicationProfile(
+            application_id=application.id,
+            phone=details.phone.strip() if details.phone else None,
+            location=details.location.strip() if details.location else None,
+            church=details.church.strip() if details.church else None,
+            faith_agreement=details.faith_agreement,
+        ))
+        session.add(MembershipApplicationConsent(
+            application_id=application.id,
+            terms_accepted=terms_accepted,
+        ))
         session.commit()
 
     # email_sent reports the submitter's confirmation copy. The admin notification is
@@ -909,7 +975,7 @@ def submit_membership_application(details: MembershipApplicationRequest):
         email,
         "We received your membership application",
         (
-            "Thank you for applying to Christian Educators Global Network. "
+            "Thank you for applying to Core Christian Educators Global Network. "
             "Our member-care team will review your application and contact you about next steps."
         ),
     )
@@ -943,7 +1009,7 @@ def submit_contact_form(details: ContactSubmissionRequest):
     email_sent = send_email(
         email,
         "We received your message",
-        "Thank you for contacting Christian Educators Global Network. Our member-care team will respond within two business days.",
+        "Thank you for contacting Core Christian Educators Global Network. Our team will read your message and follow up with you.",
     )
     send_admin_notification(
         "New contact message",
@@ -987,7 +1053,7 @@ def subscribe_to_newsletter(details: NewsletterSubscriptionRequest):
     email_sent = send_email(
         email,
         "Welcome to the Christian Educators newsletter",
-        "You are now subscribed to receive encouragement and updates from Christian Educators Global Network.",
+        "You are now subscribed to receive encouragement and updates from Core Christian Educators Global Network.",
     )
     send_admin_notification(
         "New newsletter subscriber",

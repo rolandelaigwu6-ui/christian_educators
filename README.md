@@ -1,4 +1,4 @@
-# Christian Educators Global Network
+# Core Christian Educators Global Network
 
 ## Local development
 
@@ -21,7 +21,7 @@ Open `http://127.0.0.1:5500`.
 
 Backend settings come from two places, in this order:
 
-1. **Real environment variables** — anything exported in the shell wins.
+1. **Real environment varia.bles** — anything exported in the shell wins.
 2. **`back_end/.env`** — created by copying `back_end/.env.example`. It is read
    automatically at startup and is gitignored.
 
@@ -75,3 +75,33 @@ Items 2 and 3 are best resolved together, by adopting a migration tool.
 - Restrict CORS to the production frontend URL and remove local-development origins.
 - Configure the organisation's Paystack Live account, webhook URL, and Live Secret Key only on the production host.
 - Review legal claims, data-retention practice, tax language, and consent wording with the organisation's authorised representative.
+
+## September 2026 website upgrade
+
+The public site follows the supplied COCEGN Website Copy and Website Blueprint.
+See [content status](docs/CONTENT_STATUS.md) for implemented pages, confirmed details,
+and content or services still needed for launch. The existing README configuration
+and deployment requirements above still apply.
+
+Six realistic, clearly labelled illustrative image sets are included.
+[Replace them with real photos](docs/PHOTO_REPLACEMENT.md) using the shared filenames
+or the included `scripts/replace_photo.py` command; captions and alt text can be
+updated across all affected pages at once.
+
+Membership now offers Bronze, Silver, Gold and Diamond. Restart the API to create the
+new application-profile and consent tables; existing records are preserved.
+Membership checkout stays unavailable until actual fees are supplied. Coordinator,
+volunteer, partner and story submissions appear in the admin **Enquiries & applications** table.
+
+Validation commands (no frontend package installation required):
+
+```bash
+python3 scripts/check_site.py
+python3 scripts/check_browser.py  # requires an installed Chrome/Chromium browser
+cd back_end
+uv run pytest tests -q
+```
+
+The browser checks use mocked submissions and do not send real messages.
+After choosing the actual domain, run `scripts/generate_sitemap.py --base-url` with
+its HTTPS origin, as described in the content-status document.

@@ -3,17 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard | Christian Educators Global Network</title>
+    <title>Admin Dashboard | Core Christian Educators Global Network</title>
     <meta name="robots" content="noindex">
     <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg">
     <link rel="stylesheet" href="../assets/css/style.css">
-</head>
-<body>
-<header class="site-nav">
-    <a class="nav-wordmark" href="../index.html"><span class="nav-mark">CE</span><span>Christian Educators<small>Global Network</small></span></a>
-    <nav class="nav-links" aria-label="Admin navigation"><a href="member-dashboard.html">Member Dashboard</a><a href="get_help.html">Get Help</a></nav>
+<meta name="description" content="COCEGN account and administration tools."></head>
+<body class="cocegn-site"><a class="skip-link" href="#main-content">Skip to content</a>
+<header class="site-nav"><a class="nav-wordmark" href="../index.html" aria-label="COCEGN home"><img class="nav-logo" src="../assets/img/cocegn-logo.webp" alt="" width="64" height="64"><span>COCEGN<small>Core Christian Educators<br>Global Network</small></span></a><button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-menu"><span aria-hidden="true">☰</span><span class="visually-hidden">Menu</span></button>
+<nav id="nav-menu" class="nav-links" aria-label="Main navigation"><a href="../pages/about.html">About us</a><a href="../pages/programs.html">Our programs</a><a href="../pages/get-involved.html">Get involved</a><a href="../pages/generosity.html">Sponsor & support</a><a href="../pages/calendar.html">Events & media</a><a href="../pages/get_help.html">Contact</a><span class="nav-actions"><a class="nav-login" href="../pages/member-login.html" data-nav-portal>Member login</a><a class="nav-donate" href="../pages/donate.html">Give back ↗</a></span></nav>
 </header>
-<main data-admin-dashboard hidden>
+<main id="main-content" data-admin-dashboard hidden>
     <section class="content-section" data-admin-access-error hidden><div class="form-error">Your signed-in account does not have administrator access. Ask an existing administrator to grant access, then sign out and sign back in.</div></section>
     <section class="member-banner">
         <div><p class="section-label" style="color:#fff;">Administration</p><h1>Submission overview</h1><p>Review the latest applications, messages, and newsletter signups.</p></div>
@@ -21,7 +20,7 @@
     </section>
     <div class="dash-grid">
         <section class="dash-card"><p class="section-label">Applications</p><h2 data-admin-applications>0</h2><p>Membership applications received.</p></section>
-        <section class="dash-card"><p class="section-label">Messages</p><h2 data-admin-contacts>0</h2><p>Contact submissions received.</p></section>
+        <section class="dash-card"><p class="section-label">Messages</p><h2 data-admin-contacts>0</h2><p>Coordinator, volunteer, partnership, story and contact submissions.</p></section>
         <section class="dash-card"><p class="section-label">Newsletter</p><h2 data-admin-subscribers>0</h2><p>Active newsletter subscribers.</p></section>
     </div>
     <section class="content-section soft-section admin-section">
@@ -31,7 +30,7 @@
             <p>The user must already have an account. This gives them access to this dashboard.</p>
             <form id="grant-admin-form" novalidate>
                 <div class="form-grid"><div class="field"><label for="admin-email">User email address</label><input id="admin-email" name="email" type="email" autocomplete="email" required></div></div>
-                <p class="form-error" hidden></p>
+                <p class="form-error" role="alert" hidden></p>
                 <p class="form-success" hidden></p>
                 <div class="action-row"><button class="action-button" type="submit">Grant Admin Access</button></div>
             </form>
@@ -39,10 +38,10 @@
     </section>
     <section class="content-section admin-section">
         <p class="section-label">Membership</p><h2>Latest applications</h2>
-        <div class="admin-table-wrap"><table id="admin-applications"><thead><tr><th>Name</th><th>Email</th><th>Tier</th><th>Country</th><th>Received</th></tr></thead><tbody></tbody></table></div>
+        <div class="admin-table-wrap"><table id="admin-applications"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Tier</th><th>Country</th><th>Location</th><th>Role</th><th>Organisation</th><th>Church</th><th>Values agreed</th><th>Terms agreed</th><th>Updates requested</th><th>Received</th></tr></thead><tbody></tbody></table></div>
     </section>
     <section class="content-section soft-section admin-section">
-        <p class="section-label">Contact</p><h2>Latest messages</h2>
+        <p class="section-label">Contact</p><h2>Enquiries & applications</h2>
         <div class="admin-table-wrap"><table id="admin-contacts"><thead><tr><th>Name</th><th>Email</th><th>Topic</th><th>Message</th><th>Received</th></tr></thead><tbody></tbody></table></div>
     </section>
     <section class="content-section admin-section">
@@ -50,6 +49,11 @@
         <div class="admin-table-wrap"><table id="admin-subscribers"><thead><tr><th>First name</th><th>Email</th><th>Subscribed</th></tr></thead><tbody></tbody></table></div>
     </section>
 </main>
+<footer class="site-footer"><div class="footer-grid"><div class="footer-about"><img class="footer-logo" src="../assets/img/cocegn-logo.webp" alt="COCEGN" width="100" height="100" loading="lazy"><p class="footer-brand">Educating for impact.</p><p>Equipping Christian Educators. Transforming Lives with God&#x27;s Word and Truth.</p><a class="footer-phone" href="tel:+2348032872739">+234 803 287 2739</a><a class="footer-whatsapp" href="https://wa.me/2348032872739">Chat on WhatsApp ↗</a></div>
+<nav class="footer-col" aria-label="Discover"><p class="footer-heading">Discover</p><a href="../pages/about.html">Our story</a><a href="../pages/programs.html">Our programs</a><a href="../pages/academy.html">COCEGN Academy</a><a href="../pages/calendar.html">Events & media</a><a href="../pages/what_new.html">Stories & updates</a></nav>
+<nav class="footer-col" aria-label="Take part"><p class="footer-heading">Take part</p><a href="../pages/membership.html">Join the network</a><a href="../pages/state-coordinator.html">Become a coordinator</a><a href="../pages/get-involved.html">Volunteer & partner</a><a href="../pages/generosity.html">Sponsor & support</a><a href="../pages/member-login.html" data-nav-portal>Member login</a></nav>
+<nav class="footer-col" aria-label="Get in touch"><p class="footer-heading">Get in touch</p><a href="../pages/get_help.html">Contact us</a><a href="../pages/faq.html">Common questions</a><a href="../pages/safeguarding.html">Care & safeguarding</a><a href="../pages/privacy.html">Privacy policy</a><a href="../pages/terms.html">Terms of use</a></nav>
+</div><div class="footer-legal"><p>Core Christian Educators Global Network · CAC RC 1546376 · Registered in Nigeria since 2018.</p><p>Rooted in Benue State. Growing through local communities. © <span data-year>2026</span> COCEGN.</p></div></footer>
 <script src="../assets/js/main.js"></script>
 </body>
 </html>

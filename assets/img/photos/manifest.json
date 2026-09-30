@@ -1,0 +1,89 @@
+{
+  "educators-community": {
+    "illustrative": true,
+    "alt": "A group of Nigerian educators sharing ideas in a school courtyard",
+    "files": [
+      "assets/img/photos/educators-community-640.webp",
+      "assets/img/photos/educators-community-1200.webp"
+    ],
+    "pages": [
+      "index.html",
+      "pages/membership.html",
+      "pages/what_new.html",
+      "pages/programs.html",
+      "pages/generosity.html",
+      "pages/about.html",
+      "pages/get-involved.html",
+      "pages/start_here.html"
+    ]
+  },
+  "academy-classroom": {
+    "illustrative": true,
+    "alt": "A teacher guiding a geometry lesson in a Nigerian classroom",
+    "files": [
+      "assets/img/photos/academy-classroom-640.webp",
+      "assets/img/photos/academy-classroom-1200.webp"
+    ],
+    "pages": [
+      "index.html",
+      "pages/academy.html",
+      "pages/generosity.html",
+      "pages/sponsor-child.html"
+    ]
+  },
+  "family-support": {
+    "illustrative": true,
+    "alt": "Two women sharing a warm conversation on a shaded veranda",
+    "files": [
+      "assets/img/photos/family-support-640.webp",
+      "assets/img/photos/family-support-1200.webp"
+    ],
+    "pages": [
+      "index.html",
+      "pages/adopt-widow.html",
+      "pages/programs.html",
+      "pages/generosity.html"
+    ]
+  },
+  "aged-companion": {
+    "illustrative": true,
+    "alt": "An older educator and a younger companion enjoying a conversation",
+    "files": [
+      "assets/img/photos/aged-companion-640.webp",
+      "assets/img/photos/aged-companion-1200.webp"
+    ],
+    "pages": [
+      "pages/generosity.html",
+      "pages/ministry-aged.html"
+    ]
+  },
+  "educator-workshop": {
+    "illustrative": true,
+    "alt": "Adult educators taking part in a small group workshop",
+    "files": [
+      "assets/img/photos/educator-workshop-640.webp",
+      "assets/img/photos/educator-workshop-1200.webp"
+    ],
+    "pages": [
+      "index.html",
+      "pages/calendar.html",
+      "pages/get_equipped.html",
+      "pages/programs.html",
+      "pages/state-coordinator.html"
+    ]
+  },
+  "teacher-preparing": {
+    "illustrative": true,
+    "alt": "A teacher preparing lessons at a classroom desk",
+    "files": [
+      "assets/img/photos/teacher-preparing-640.webp",
+      "assets/img/photos/teacher-preparing-1200.webp"
+    ],
+    "pages": [
+      "index.html",
+      "pages/donate.html",
+      "pages/generosity.html",
+      "pages/support-teacher.html"
+    ]
+  }
+}

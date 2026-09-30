@@ -22,7 +22,14 @@
     async function errorMessage(response, fallback) {
         try {
             var body = await response.json();
-            return body.detail || fallback;
+            if (typeof body.detail === "string") return body.detail;
+            if (Array.isArray(body.detail)) {
+                return body.detail.map(function (item) {
+                    var name = item.loc && item.loc[item.loc.length - 1];
+                    return (name ? String(name).replace(/_/g, " ") + ": " : "") + item.msg;
+                }).join(". ");
+            }
+            return fallback;
         } catch (error) {
             return fallback;
         }
@@ -33,7 +40,7 @@
     });
 
     var main = document.querySelector("main");
-    if (main && !document.querySelector("[data-go-back]")) {
+    if (main && IN_PAGES && !document.querySelector("[data-go-back]")) {
         var backButton = document.createElement("button");
         backButton.type = "button";
         backButton.className = "back-button";
@@ -63,8 +70,35 @@
         var href = (link.getAttribute("href") || "").toLowerCase();
         if (here && href.slice(-here.length) === here) {
             link.classList.add("is-active");
+            link.setAttribute("aria-current", "page");
         }
     });
+
+    var navGroups = {
+        "academy.html": "about.html",
+        "ministry-aged.html": "generosity.html",
+        "support-teacher.html": "generosity.html",
+        "sponsor-child.html": "generosity.html",
+        "adopt-widow.html": "generosity.html",
+        "membership.html": "get-involved.html",
+        "join.html": "get-involved.html",
+        "state-coordinator.html": "get-involved.html",
+        "what_new.html": "calendar.html"
+    };
+    document.querySelectorAll(".nav-links a").forEach(function (link) {
+        if (navGroups[here] && link.getAttribute("href").split("/").pop() === navGroups[here]) {
+            link.classList.add("is-active");
+        }
+    });
+    if (nav && toggle) {
+        nav.addEventListener("keydown", function (event) {
+            if (event.key === "Escape") {
+                nav.classList.remove("nav-open");
+                toggle.setAttribute("aria-expanded", "false");
+                toggle.focus();
+            }
+        });
+    }
 
     apiRequest("/auth/me")
         .then(function (response) {
@@ -93,6 +127,7 @@
     if (loginForm) {
         loginForm.addEventListener("submit", async function (event) {
             event.preventDefault();
+            if (!loginForm.reportValidity()) return;
             var error = loginForm.querySelector(".form-error");
             var email = loginForm.querySelector("[name=email]").value.trim();
             var password = loginForm.querySelector("[name=password]").value;
@@ -122,6 +157,7 @@
     if (createAccountForm) {
         createAccountForm.addEventListener("submit", async function (event) {
             event.preventDefault();
+            if (!createAccountForm.reportValidity()) return;
             var error = createAccountForm.querySelector(".form-error");
             var firstName = createAccountForm.querySelector("[name=firstname]").value.trim();
             var lastName = createAccountForm.querySelector("[name=lastname]").value.trim();
@@ -338,7 +374,7 @@
             var tableRow = document.createElement("tr");
             fields.forEach(function (field) {
                 var cell = document.createElement("td");
-                cell.textContent = row[field] || "—";
+                cell.textContent = typeof row[field] === "boolean" ? (row[field] ? "Yes" : "No") : (row[field] || "—");
                 tableRow.appendChild(cell);
             });
             body.appendChild(tableRow);
@@ -377,7 +413,7 @@
             document.querySelector("[data-admin-applications]").textContent = data[0].membership_applications;
             document.querySelector("[data-admin-contacts]").textContent = data[0].contact_submissions;
             document.querySelector("[data-admin-subscribers]").textContent = data[0].newsletter_subscribers;
-            fillAdminTable("admin-applications", data[1], ["name", "email", "tier", "country", "created_at"]);
+            fillAdminTable("admin-applications", data[1], ["name", "email", "phone", "tier", "country", "location", "role", "organization", "church", "faith_agreement", "terms_accepted", "marketing_consent", "created_at"]);
             fillAdminTable("admin-contacts", data[2], ["name", "email", "topic", "message", "created_at"]);
             fillAdminTable("admin-subscribers", data[3], ["first_name", "email", "subscribed_at"]);
             adminDashboard.hidden = false;
@@ -445,7 +481,13 @@
                 return;
             }
 
+            if (form.getAttribute("aria-busy") === "true") return;
+            var submit = form.querySelector("button[type=submit]");
+            var submitLabel = submit ? submit.textContent : "";
+            form.setAttribute("aria-busy", "true");
+            if (submit) { submit.disabled = true; submit.textContent = "Sending…"; }
             var error = form.querySelector(".form-error");
+            if (error) error.hidden = true;
             var success = document.getElementById(successId);
 
             try {
@@ -484,13 +526,17 @@
                 form.hidden = true;
                 if (panel) {
                     panel.hidden = false;
-                    panel.scrollIntoView({ behavior: "smooth", block: "center" });
+                    panel.focus({ preventScroll: true });
+                    panel.scrollIntoView({ behavior: "auto", block: "center" });
                 }
             } catch (requestError) {
                 if (error) {
                     error.textContent = requestError.message || unavailableMessage;
                     error.hidden = false;
                 }
+            } finally {
+                form.removeAttribute("aria-busy");
+                if (submit) { submit.disabled = false; submit.textContent = submitLabel; }
             }
         });
     }
@@ -500,14 +546,19 @@
         "/membership-applications",
         function (form) {
             return {
-                tier: form.querySelector("[name=tier]:checked").value,
+                tier: form.querySelector("[name=tier]").value,
                 first_name: form.querySelector("[name=firstname]").value.trim(),
                 last_name: form.querySelector("[name=lastname]").value.trim(),
                 email: form.querySelector("[name=email]").value.trim(),
                 country: form.querySelector("[name=country]").value,
                 role: form.querySelector("[name=role]").value,
                 organization: form.querySelector("[name=organization]").value.trim(),
-                marketing_consent: document.getElementById("join-consent").checked
+                phone: form.querySelector("[name=phone]").value.trim(),
+                location: form.querySelector("[name=location]").value.trim(),
+                church: form.querySelector("[name=church]").value.trim(),
+                faith_agreement: form.querySelector("[name=faith_agreement]").checked,
+                terms_accepted: document.getElementById("join-consent").checked,
+                marketing_consent: document.getElementById("join-updates").checked
             };
         },
         "join-success",
@@ -545,46 +596,33 @@
         "The newsletter service is unavailable. Please try again."
     );
 
-    var donateForm = document.getElementById("donate-form");
-    if (donateForm) {
-        var donateError = donateForm.querySelector(".form-error");
-        donateError.textContent = "Online donations are temporarily unavailable while we finalise the organization payment account.";
-        donateError.hidden = false;
-        donateForm.querySelector("button[type=submit]").disabled = true;
-        donateForm.addEventListener("submit", async function (event) {
-            event.preventDefault();
-            if (!donateForm.reportValidity()) {
-                return;
-            }
-            var error = donateForm.querySelector(".form-error");
-            var customAmount = Number(donateForm.querySelector("[name=custom_amount]").value);
-            var selectedAmount = donateForm.querySelector("[name=amount]:checked").value;
-            var amount = customAmount || Number(selectedAmount);
-            if (!amount || selectedAmount === "other" && !customAmount) {
-                error.textContent = "Choose or enter a donation amount.";
-                error.hidden = false;
-                return;
-            }
-            try {
-                var response = await apiRequest("/payments/initialize", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        payment_type: "donation",
-                        email: donateForm.querySelector("[name=email]").value.trim(),
-                        donation_amount: amount
-                    })
-                });
-                if (!response.ok) {
-                    error.textContent = await errorMessage(response, "Unable to start the secure payment checkout.");
-                    error.hidden = false;
-                    return;
+    document.querySelectorAll("[data-enquiry-form]").forEach(function (form) {
+        var id = form.id.replace(/-form$/, "");
+        connectPublicForm(form.id, "/contact-submissions", function (current) {
+            var parts = [];
+            current.querySelectorAll("[data-message-field]").forEach(function (field) {
+                if (field.value.trim()) {
+                    parts.push(field.getAttribute("data-message-field") + ": " + field.value.trim());
                 }
-                location.href = (await response.json()).checkout_url;
-            } catch (requestError) {
-                error.textContent = requestError.message || "The payment service is unavailable. Please try again.";
-                error.hidden = false;
-            }
-        });
-    }
+            });
+            parts.push(current.querySelector("[name=message]").value.trim());
+            return {
+                name: current.querySelector("[name=name]").value.trim(),
+                email: current.querySelector("[name=email]").value.trim(),
+                topic: current.getAttribute("data-topic"),
+                message: parts.join("\n\n")
+            };
+        }, id + "-success", id + "-warning", "We could not reach the team. Please try again or contact us on WhatsApp.");
+    });
+
+    // Only select existing choices: query parameters never become markup or new topics.
+    var pageParams = new URLSearchParams(location.search);
+    [["#join-tier", "tier"], ["#contact-topic", "topic"]].forEach(function (entry) {
+        var select = document.querySelector(entry[0]);
+        var value = pageParams.get(entry[1]);
+        if (select && value && Array.from(select.options).some(function (option) { return option.value === value; })) {
+            select.value = value;
+        }
+    });
+
 })();

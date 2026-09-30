@@ -1,0 +1,11 @@
+User-agent: *
+Disallow: /pages/admin-dashboard.html
+Disallow: /pages/member-dashboard.html
+Disallow: /pages/member-login.html
+Disallow: /pages/reset-password.html
+Disallow: /pages/verify-email.html
+Disallow: /pages/payment-result.html
+Disallow: /back_end/
+Disallow: /docs/
+Disallow: /scripts/
+Disallow: /.git/
