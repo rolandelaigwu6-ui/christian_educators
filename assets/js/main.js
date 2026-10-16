@@ -41,6 +41,19 @@
 
     var main = document.querySelector("main");
     if (main && IN_PAGES && !document.querySelector("[data-go-back]")) {
+        var breadcrumbs = document.createElement("nav");
+        breadcrumbs.className = "breadcrumbs";
+        breadcrumbs.setAttribute("aria-label", "Breadcrumb");
+        var homeLink = document.createElement("a");
+        homeLink.href = "../index.html";
+        homeLink.textContent = "Home";
+        var separator = document.createElement("span");
+        separator.textContent = "/";
+        separator.setAttribute("aria-hidden", "true");
+        var currentPage = document.createElement("span");
+        currentPage.textContent = document.title.split("|")[0].trim();
+        currentPage.setAttribute("aria-current", "page");
+        breadcrumbs.append(homeLink, separator, currentPage);
         var backButton = document.createElement("button");
         backButton.type = "button";
         backButton.className = "back-button";
@@ -53,7 +66,8 @@
             }
             location.href = IN_PAGES ? "../index.html" : "index.html";
         });
-        main.insertBefore(backButton, main.firstChild);
+        breadcrumbs.appendChild(backButton);
+        main.insertBefore(breadcrumbs, main.firstChild);
     }
 
     var nav = document.querySelector(".site-nav");
@@ -100,6 +114,60 @@
         });
     }
 
+    // Native observers animate only entering content; no animation loop or library.
+    if ("IntersectionObserver" in window && window.matchMedia) {
+        var motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+        var revealObserver = null;
+        var revealItems = [];
+        function enableContentMotion() {
+            if (motionPreference.matches) return;
+            revealItems = Array.from(document.querySelectorAll(
+                ".content-section > .section-label, .content-section > h2, .content-section > p, " +
+                ".mission-card, .info-grid > article, .article-card, .steps > li, " +
+                ".editorial-split > *, .facts-strip > div"
+            ));
+            revealObserver = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add("is-visible");
+                        revealObserver.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.08, rootMargin: "0px 0px -24px 0px" });
+            var siblings = new Map();
+            revealItems.forEach(function (item) {
+                var index = siblings.get(item.parentNode) || 0;
+                siblings.set(item.parentNode, index + 1);
+                item.classList.add("reveal-item", "reveal-delay-" + (index % 4));
+                revealObserver.observe(item);
+            });
+        }
+        enableContentMotion();
+        function stopContentMotion() {
+            if (!motionPreference.matches) return;
+            if (revealObserver) revealObserver.disconnect();
+            revealItems.forEach(function (item) { item.classList.add("is-visible"); });
+        }
+        if (motionPreference.addEventListener) motionPreference.addEventListener("change", stopContentMotion);
+        document.addEventListener("focusin", function (event) {
+            var item = event.target.closest(".reveal-item");
+            if (item) {
+                item.classList.add("is-visible");
+                if (revealObserver) revealObserver.unobserve(item);
+            }
+        });
+        if (nav) {
+            var sentinel = document.createElement("span");
+            sentinel.className = "nav-sentinel";
+            sentinel.setAttribute("aria-hidden", "true");
+            nav.insertAdjacentElement("afterend", sentinel);
+            var navObserver = new IntersectionObserver(function (entries) {
+                nav.classList.toggle("is-scrolled", !entries[0].isIntersecting);
+            });
+            navObserver.observe(sentinel);
+        }
+    }
+
     apiRequest("/auth/me")
         .then(function (response) {
             return response.ok ? response.json() : null;
@@ -123,11 +191,28 @@
             /* Public pages remain usable when the local API is not running. */
         });
 
+    function startFormRequest(form) {
+        if (form.getAttribute("aria-busy") === "true") return null;
+        var submit = form.querySelector("button[type=submit]");
+        var label = submit ? submit.textContent : "";
+        form.setAttribute("aria-busy", "true");
+        if (submit) { submit.disabled = true; submit.textContent = "Please wait…"; }
+        form.querySelectorAll(".form-error, .form-success").forEach(function (panel) {
+            panel.hidden = true;
+        });
+        return function () {
+            form.removeAttribute("aria-busy");
+            if (submit) { submit.disabled = false; submit.textContent = label; }
+        };
+    }
+
     var loginForm = document.getElementById("login-form");
     if (loginForm) {
         loginForm.addEventListener("submit", async function (event) {
             event.preventDefault();
             if (!loginForm.reportValidity()) return;
+            var finish = startFormRequest(loginForm);
+            if (!finish) return;
             var error = loginForm.querySelector(".form-error");
             var email = loginForm.querySelector("[name=email]").value.trim();
             var password = loginForm.querySelector("[name=password]").value;
@@ -149,6 +234,8 @@
             } catch (requestError) {
                 error.textContent = "The sign-in service is unavailable. Please try again.";
                 error.hidden = false;
+            } finally {
+                finish();
             }
         });
     }
@@ -158,6 +245,8 @@
         createAccountForm.addEventListener("submit", async function (event) {
             event.preventDefault();
             if (!createAccountForm.reportValidity()) return;
+            var finish = startFormRequest(createAccountForm);
+            if (!finish) return;
             var error = createAccountForm.querySelector(".form-error");
             var firstName = createAccountForm.querySelector("[name=firstname]").value.trim();
             var lastName = createAccountForm.querySelector("[name=lastname]").value.trim();
@@ -198,6 +287,8 @@
             } catch (requestError) {
                 error.textContent = "The account service is unavailable. Please try again.";
                 error.hidden = false;
+            } finally {
+                finish();
             }
         });
     }
@@ -245,6 +336,8 @@
             if (!requestPasswordResetForm.reportValidity()) {
                 return;
             }
+            var finish = startFormRequest(requestPasswordResetForm);
+            if (!finish) return;
             var error = requestPasswordResetForm.querySelector(".form-error");
             var success = requestPasswordResetForm.querySelector(".form-success");
             try {
@@ -262,6 +355,8 @@
             } catch (requestError) {
                 error.textContent = requestError.message || "The account service is unavailable. Please try again.";
                 error.hidden = false;
+            } finally {
+                finish();
             }
         });
     }
@@ -271,6 +366,8 @@
             if (!resetPasswordForm.reportValidity()) {
                 return;
             }
+            var finish = startFormRequest(resetPasswordForm);
+            if (!finish) return;
             var error = resetPasswordForm.querySelector(".form-error");
             var success = resetPasswordForm.querySelector(".form-success");
             try {
@@ -291,6 +388,8 @@
             } catch (requestError) {
                 error.textContent = requestError.message || "The account service is unavailable. Please try again.";
                 error.hidden = false;
+            } finally {
+                finish();
             }
         });
     }
@@ -325,14 +424,23 @@
         }
     }
 
+    function showDashboardError() {
+        var panel = document.querySelector("[data-dashboard-error]");
+        if (panel) { panel.hidden = false; panel.focus(); }
+    }
+    document.querySelectorAll("[data-dashboard-retry]").forEach(function (button) {
+        button.addEventListener("click", function () { location.reload(); });
+    });
+
     var dashboard = document.querySelector("[data-member-dashboard]");
     if (dashboard) {
         apiRequest("/member/dashboard")
             .then(function (response) {
-                if (!response.ok) {
+                if (response.status === 401) {
                     location.href = portalPath("member-login.html");
                     return null;
                 }
+                if (!response.ok) throw new Error("Unable to load the member dashboard.");
                 return response.json();
             })
             .then(function (member) {
@@ -350,9 +458,7 @@
                 });
                 dashboard.hidden = false;
             })
-            .catch(function () {
-                location.href = portalPath("member-login.html");
-            });
+            .catch(showDashboardError);
     }
 
     function fillAdminTable(tableId, rows, fields) {
@@ -387,13 +493,14 @@
             apiRequest("/admin/overview"),
             apiRequest("/admin/membership-applications"),
             apiRequest("/admin/contact-submissions"),
-            apiRequest("/admin/newsletter-subscribers")
+            apiRequest("/admin/newsletter-subscribers"),
+            apiRequest("/admin/payments")
         ]).then(async function (responses) {
             var unauthorized = responses.some(function (response) {
                 return response.status === 401;
             });
             if (unauthorized) {
-                location.href = portalPath("member-dashboard.html");
+                location.href = portalPath("member-login.html");
                 return;
             }
             var denied = responses.some(function (response) {
@@ -416,10 +523,9 @@
             fillAdminTable("admin-applications", data[1], ["name", "email", "phone", "tier", "country", "location", "role", "organization", "church", "faith_agreement", "terms_accepted", "marketing_consent", "created_at"]);
             fillAdminTable("admin-contacts", data[2], ["name", "email", "topic", "message", "created_at"]);
             fillAdminTable("admin-subscribers", data[3], ["first_name", "email", "subscribed_at"]);
+            fillAdminTable("admin-payments", data[4], ["reference", "email", "payment_type", "amount_ngn", "currency", "status", "created_at", "paid_at"]);
             adminDashboard.hidden = false;
-        }).catch(function () {
-            location.href = portalPath("member-dashboard.html");
-        });
+        }).catch(showDashboardError);
     }
 
     var grantAdminForm = document.getElementById("grant-admin-form");
@@ -429,6 +535,8 @@
             if (!grantAdminForm.reportValidity()) {
                 return;
             }
+            var finish = startFormRequest(grantAdminForm);
+            if (!finish) return;
 
             var error = grantAdminForm.querySelector(".form-error");
             var success = grantAdminForm.querySelector(".form-success");
@@ -455,16 +563,36 @@
                 error.textContent = "The admin service is unavailable. Please try again.";
                 error.hidden = false;
                 success.hidden = true;
+            } finally {
+                finish();
             }
         });
     }
 
     document.querySelectorAll("[data-logout]").forEach(function (button) {
         button.addEventListener("click", async function () {
+            if (button.disabled) return;
+            button.disabled = true;
+            button.setAttribute("aria-busy", "true");
+            var error = button.parentNode.querySelector("[data-logout-error]");
+            if (!error) {
+                error = document.createElement("p");
+                error.className = "form-error";
+                error.setAttribute("data-logout-error", "");
+                error.setAttribute("role", "alert");
+                button.insertAdjacentElement("afterend", error);
+            }
+            error.hidden = true;
             try {
-                await apiRequest("/auth/logout", { method: "POST" });
-            } finally {
+                var response = await apiRequest("/auth/logout", { method: "POST" });
+                if (!response.ok) throw new Error("Sign-out failed.");
                 location.href = portalPath(button.getAttribute("data-logout") || "member-login.html");
+            } catch (requestError) {
+                error.textContent = "We couldn’t sign out. Your session may still be active. Please try again.";
+                error.hidden = false;
+            } finally {
+                button.disabled = false;
+                button.removeAttribute("aria-busy");
             }
         });
     });
@@ -540,6 +668,17 @@
             }
         });
     }
+
+    connectPublicForm(
+        "resend-verification-form",
+        "/auth/request-email-verification",
+        function (form) {
+            return { email: form.querySelector("[name=email]").value.trim() };
+        },
+        "resend-verification-success",
+        null,
+        "The account service is unavailable. Please try again."
+    );
 
     connectPublicForm(
         "join-form",

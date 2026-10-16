@@ -56,6 +56,87 @@ HARNESS = r'''<!doctype html><html><head><title>RUNNING</title></head><body><pre
   form.hidden=false;form.querySelector('[name=email]').value='invalid';let calls=0;w.fetch=()=>{calls++;return Promise.reject(new Error('Must not send'))};form.dispatchEvent(new w.Event('submit',{cancelable:true}));check(calls===0,id+' invalid email blocked before request');
   f.remove();
  }
+ {
+  const f=await open('pages/member-login.html',375),w=f.contentWindow,d=w.document,form=d.getElementById('resend-verification-form');
+  check(!!form,'Verification resend is available on login page');
+  if(form){
+   form.querySelector('[name=email]').value='frontend@example.com';
+   for(const state of ['success','api-error','offline']){
+    form.hidden=false;d.getElementById('resend-verification-success').hidden=true;
+    let calls=0,path=null,payload=null;
+    w.fetch=async(url,options)=>{calls++;path=url;payload=JSON.parse(options.body);if(state==='offline')throw new Error('Offline');return {ok:state==='success',json:async()=>({detail:'Please try again shortly.'})}};
+    form.dispatchEvent(new w.Event('submit',{cancelable:true}));form.dispatchEvent(new w.Event('submit',{cancelable:true}));
+    await new Promise(resolve=>setTimeout(resolve,20));
+    check(calls===1,'Verification resend '+state+' prevents duplicate sends');
+    check(path.endsWith('/auth/request-email-verification')&&payload.email==='frontend@example.com','Verification resend uses existing API');
+    check(!(state==='success'?d.getElementById('resend-verification-success'):form.querySelector('.form-error')).hidden,'Verification resend '+state+' feedback');
+    check(!form.querySelector('button[type=submit]').disabled,'Verification resend '+state+' restores button');
+   }
+  }
+  f.remove();
+ }
+ {
+  const html=await (await fetch('pages/admin-dashboard.html')).text();
+  for(const width of [320,768,1440]){
+   const f=document.createElement('iframe');f.style.cssText='border:0;width:'+width+'px;height:1000px';
+   const setup='<base href="'+location.origin+'/pages/admin-dashboard.html"><script>window.fetch=async function(url){var path=new URL(url,document.baseURI).pathname;var data=path==="/admin/payments"?[{reference:"ce-<img src=x>",email:"donor@example.com",payment_type:"donation",amount_ngn:100,currency:"NGN",status:"success",created_at:"2026-10-15",paid_at:"2026-10-15"}]:path==="/admin/overview"?{membership_applications:0,contact_submissions:0,newsletter_subscribers:0}:path==="/auth/me"?{first_name:"Admin",is_admin:true}:[];return {ok:true,status:200,json:async function(){return data}}};<\/script>';
+   await new Promise(resolve=>{f.onload=resolve;f.srcdoc=html.replace('<head>','<head>'+setup);document.body.appendChild(f)});
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const d=f.contentDocument;
+   if(!d.querySelector('[data-admin-dashboard]'))throw new Error('Admin harness document missing: '+d.documentElement.outerHTML.slice(0,700)+'; fetched: '+html.slice(0,100));
+   check(!d.querySelector('[data-admin-dashboard]').hidden,'Admin payment view loads at '+width+'px');
+   check(d.documentElement.scrollWidth<=width,'Admin payment view fits '+width+'px');
+   const table=d.getElementById('admin-payments');
+   check(table.textContent.includes('donor@example.com')&&table.textContent.includes('NGN')&&table.textContent.includes('success'),'Admin payment record rendered at '+width+'px');
+   check(table.textContent.includes('ce-<img src=x>')&&!table.querySelector('img'),'Admin payment reference is text, not HTML at '+width+'px');
+   if(width===320){
+    const w=f.contentWindow,form=d.getElementById('grant-admin-form');form.querySelector('input').value='admin@example.com';
+    let calls=0,release;w.fetch=()=>{calls++;return new Promise(resolve=>{release=()=>resolve({ok:false,json:async()=>({detail:'Please retry.'})})})};
+    form.dispatchEvent(new w.Event('submit',{cancelable:true}));form.dispatchEvent(new w.Event('submit',{cancelable:true}));
+    check(calls===1&&form.querySelector('button').disabled,'Admin access changes prevent duplicate requests');release();await new Promise(resolve=>setTimeout(resolve,20));
+    check(!form.querySelector('.form-error').hidden&&!form.querySelector('button').disabled,'Admin access failure allows retry');
+    for(const state of ['api-error','offline']){
+     const button=d.querySelector('[data-logout]');let calls=0,release;
+     w.fetch=()=>{calls++;return new Promise((resolve,reject)=>{release=()=>state==='offline'?reject(new Error('Offline')):resolve({ok:false,status:503,json:async()=>({detail:'Unavailable'})})})};
+     button.dispatchEvent(new w.Event('click'));button.dispatchEvent(new w.Event('click'));
+     check(calls===1&&button.disabled,'Logout '+state+' prevents duplicate requests');release();await new Promise(resolve=>setTimeout(resolve,20));
+     const panel=d.querySelector('[data-logout-error]');
+     check(!!panel&&!panel.hidden&&panel.textContent.includes('sign out'),'Logout '+state+' reports that sign-out failed');
+     check(!button.disabled&&d.querySelector('[data-admin-dashboard]')&&!d.querySelector('[data-admin-dashboard]').hidden,'Logout '+state+' stays on dashboard and allows retry');
+    }
+   }
+   f.remove();
+  }
+ }
+ for(const [page,id] of [['pages/member-login.html','login'],['pages/member-login.html','create-account'],['pages/reset-password.html','request-password-reset'],['pages/reset-password.html?token=local-fixture','reset-password']]){
+  const f=await open(page,375),w=f.contentWindow,d=w.document,form=d.getElementById(id+'-form');
+  form.querySelectorAll('input').forEach(e=>{e.value=e.type==='email'?'browser@example.com':e.type==='password'?'BrowserTestPassword123!':'Browser check'});
+  for(const state of ['api-error','offline']){
+   let calls=0,release;
+   w.fetch=()=>{calls++;return new Promise((resolve,reject)=>{release=()=>state==='offline'?reject(new Error('Offline')):resolve({ok:false,json:async()=>({detail:'Please try again shortly.'})})})};
+   form.dispatchEvent(new w.Event('submit',{cancelable:true}));form.dispatchEvent(new w.Event('submit',{cancelable:true}));
+   check(calls===1,id+' '+state+' prevents duplicate requests');
+   check(form.getAttribute('aria-busy')==='true'&&form.querySelector('button[type=submit]').disabled,id+' '+state+' signals pending request');
+   release();await new Promise(resolve=>setTimeout(resolve,20));
+   check(!form.querySelector('.form-error').hidden,id+' '+state+' shows error');
+   check(!form.querySelector('button[type=submit]').disabled&&form.getAttribute('aria-busy')!=='true',id+' '+state+' allows retry');
+  }
+  f.remove();
+ }
+ for(const page of ['member-dashboard','admin-dashboard']){
+  const html=await(await fetch('pages/'+page+'.html')).text();
+  for(const state of ['api-error','offline']){
+   const f=document.createElement('iframe');f.style.cssText='border:0;width:375px;height:1000px';
+   const setup='<base href="'+location.origin+'/pages/'+page+'.html"><script>window.fetch=async function(url){if(new URL(url,document.baseURI).pathname==="/auth/me")return {ok:true,json:async()=>({first_name:"Test",is_admin:true})};'+(state==='offline'?'throw new Error("Offline");':'return {ok:false,status:503,json:async()=>({detail:"Unavailable"})};')+'};<\/script>';
+   await new Promise(resolve=>{f.onload=resolve;f.srcdoc=html.replace('<head>','<head>'+setup);document.body.appendChild(f)});
+   await new Promise(resolve=>setTimeout(resolve,50));
+   const d=f.contentDocument,error=d.querySelector('[data-dashboard-error]');
+   check(!!error&&!error.hidden,page+' '+state+' displays service error without redirect');
+   check(!!d.querySelector('[data-dashboard-retry]'),page+' '+state+' offers retry');
+   check(!!d.querySelector('main[hidden]'),page+' '+state+' keeps private dashboard hidden');
+   f.remove();
+  }
+ }
  document.title=results.some(r=>r.startsWith('FAIL'))?'FAILED':'PASSED';
 })().catch(error=>{document.title='FAILED';document.querySelector('pre').textContent+='\nERROR '+error.stack});
 </script></body></html>'''.replace('__PAGES__', json.dumps(PAGES))
@@ -100,7 +181,7 @@ def main():
         failures = [line for line in lines if not line.startswith('PASS ')]
         if failures or '<title>PASSED</title>' not in result.stdout:
             raise SystemExit('\n'.join(failures) or 'Browser checks did not finish.')
-        print(f'PASS: {len(lines)} browser assertions across {len(PAGES)} pages at 320, 768 and 1440px; seven form flows tested with mocked API responses.')
+        print(f'PASS: {len(lines)} browser assertions across {len(PAGES)} pages at 320, 768 and 1440px; public forms, account actions and dashboards tested with mocked API responses.')
 
 
 if __name__ == '__main__':

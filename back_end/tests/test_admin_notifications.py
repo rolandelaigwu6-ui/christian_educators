@@ -38,6 +38,13 @@ ADMIN = "admin@example.com"
 
 # Settings that could leak in from the ambient environment or a previous reload.
 MANAGED_SETTINGS = (
+    "DATABASE_URL",
+    "ENVIRONMENT",
+    "FRONTEND_BASE_URL",
+    "ADMIN_EMAIL",
+    "PAYMENTS_ENABLED",
+    "PAYSTACK_SECRET_KEY",
+    "BREVO_API_KEY",
     "SMTP_HOST",
     "SMTP_FROM_EMAIL",
     "SMTP_USERNAME",

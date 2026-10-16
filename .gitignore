@@ -13,3 +13,10 @@ back_end/*.log
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Generated deployment output and private Vercel project metadata
+public/
+.vercel/
+.tools/
+.vercel
+.env*

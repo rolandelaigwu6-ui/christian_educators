@@ -1,14 +1,29 @@
 [project]
 name = "christian-educators"
 version = "0.1.0"
-description = "Add your description here"
+description = "COCEGN website and FastAPI membership API"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "alembic>=1.16",
+    "fastapi>=0.141.1",
+    "psycopg[binary]>=3.2",
+    "pwdlib[argon2]>=0.3.1",
+    "pydantic[email]>=2.13.4",
+    "python-dotenv>=1.2.3",
+    "sqlalchemy>=2.0.52",
+    "uvicorn[standard]>=0.52.4",
+]
 
-[project.scripts]
-christian-educators = "christian_educators:main"
+[dependency-groups]
+dev = [
+    "httpx>=0.28",
+    "pytest>=9.1.1",
+]
 
-[build-system]
-requires = ["uv_build>=0.12.16,<0.13.0"]
-build-backend = "uv_build"
+[tool.vercel]
+entrypoint = "app:app"
+
+[tool.vercel.fastapi.static]
+cdn = true
+exclude = true

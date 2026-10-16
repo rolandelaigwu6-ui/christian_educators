@@ -15,6 +15,7 @@ environment and reimport the module (same pattern as test_env_loading.py).
 
 import importlib
 import sys
+import pytest
 from pathlib import Path
 
 from sqlalchemy.engine import make_url
@@ -87,3 +88,12 @@ def test_sqlite_only_connect_argument_is_not_passed_to_other_drivers(
     assert module.engine_options("sqlite+pysqlite:///./local.db") == expected
 
     assert module.engine_options("postgresql+psycopg://user:pw@host/db") == {}
+
+
+@pytest.mark.parametrize('scheme', ['postgres', 'postgresql'])
+def test_provider_postgres_url_uses_installed_psycopg_driver(tmp_path, monkeypatch, scheme):
+    module = load_module(tmp_path, monkeypatch,
+        database_url=f'{scheme}://user:p%40ss@localhost/cocegn?sslmode=require')
+    assert module.engine.url.drivername == 'postgresql+psycopg'
+    assert module.engine.url.password == 'p@ss'
+    assert module.engine.url.query['sslmode'] == 'require'

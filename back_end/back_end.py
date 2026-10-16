@@ -1,18 +1,27 @@
 from contextlib import asynccontextmanager
+from collections import OrderedDict, deque
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 import hashlib
+import hmac
 import json
 import os
 from pathlib import Path
 import secrets
 import smtplib
+from threading import Lock
+from time import monotonic
+from urllib.parse import urlsplit
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from dotenv import load_dotenv
+from alembic.config import Config
+from alembic.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from fastapi import Cookie, FastAPI, HTTPException, Request as FastAPIRequest, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 from pwdlib import PasswordHash
@@ -25,6 +34,7 @@ from sqlalchemy import (
     create_engine,
     delete,
     select,
+    update,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
@@ -45,9 +55,12 @@ load_dotenv(os.getenv("ENV_FILE") or Path(__file__).with_name(".env"))
 # app from a different directory opens a different database. Fine locally; set
 # DATABASE_URL in the environment for anything real.
 #
-# Reading this from config does NOT by itself make PostgreSQL usable -- see README
-# section Configuration for what is still missing.
+# Production uses PostgreSQL via Psycopg; run Alembic migrations before startup.
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./christian_educators.db")
+# Hosted providers commonly supply a URL without an explicit Python driver.
+# Preserve its encoded credentials and TLS query while selecting installed Psycopg.
+if DATABASE_URL.startswith(("postgres://", "postgresql://")):
+    DATABASE_URL = "postgresql+psycopg://" + DATABASE_URL.split("://", 1)[1]
 FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://127.0.0.1:5500")
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
 SMTP_HOST = os.getenv("SMTP_HOST")
@@ -56,6 +69,7 @@ SMTP_USERNAME = os.getenv("SMTP_USERNAME")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL")
 SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
 ADMIN_NOTIFICATION_EMAIL = os.getenv("ADMIN_NOTIFICATION_EMAIL")
 PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
 PAYMENTS_ENABLED = os.getenv("PAYMENTS_ENABLED", "false").lower() == "true"
@@ -180,7 +194,7 @@ class MembershipApplication(Base):
 
 class MembershipApplicationProfile(Base):
     # A companion table keeps existing applications intact without adding columns
-    # to their table. create_all creates it on both fresh and existing databases.
+    # to their table. Alembic creates it on fresh and compatible existing databases.
     __tablename__ = "membership_application_profiles"
 
     application_id: Mapped[int] = mapped_column(ForeignKey("membership_applications.id"), primary_key=True)
@@ -322,7 +336,8 @@ class PaymentInitializationRequest(BaseModel):
     payment_type: str = Field(pattern="^(membership|donation)$")
     email: EmailStr
     tier: str | None = Field(default=None, max_length=30)
-    donation_amount: int | None = Field(default=None, ge=100)
+    # Kobo is stored in PostgreSQL's signed 32-bit integer column.
+    donation_amount: int | None = Field(default=None, ge=100, le=21474836, strict=True)
 
 
 def now_utc():
@@ -387,11 +402,10 @@ def send_password_reset_email(email: str, token: str) -> bool:
 
 
 def send_email(recipient: str | None, subject: str, body: str):
-    """Send an email over SMTP, returning True only when it was handed to the server.
+    """Send through Brevo HTTPS or SMTP; True requires provider acknowledgement.
 
-    With no SMTP configured the message is printed to the terminal instead. That is
-    useful during local development, but it is NOT a send -- a caller that tells a
-    user "check your email" must check the return value first.
+    Failures log only a category, never recipients, subjects, bodies, tokens or
+    provider error text. A caller must check the result before promising delivery.
 
     This function deliberately does not raise. A mail outage must not fail a request
     whose data has already been stored; making the failure visible is the caller's job.
@@ -402,9 +416,31 @@ def send_email(recipient: str | None, subject: str, body: str):
         # any surface. Say so, so a blank ADMIN_NOTIFICATION_EMAIL is noticed rather
         # than silently dropping every notification forever.
         print("\n=== EMAIL NOT SENT: no recipient address ===")
-        print(f"Subject: {subject}")
         print("Set ADMIN_NOTIFICATION_EMAIL in back_end/.env if this was an admin notice.")
         print("=== end of unsent email ===\n")
+        return False
+
+    if BREVO_API_KEY:
+        if not SMTP_FROM_EMAIL:
+            print('=== EMAIL NOT SENT: verified sender is not configured ===')
+            return False
+        payload = {
+            'sender': {'name': 'Core Christian Educators Global Network', 'email': SMTP_FROM_EMAIL},
+            'to': [{'email': recipient}], 'subject': subject, 'textContent': body,
+        }
+        request = Request('https://api.brevo.com/v3/smtp/email', method='POST',
+            data=json.dumps(payload).encode(),
+            headers={'api-key': BREVO_API_KEY, 'Content-Type': 'application/json', 'Accept': 'application/json'})
+        try:
+            with urlopen(request, timeout=15) as response:
+                result = json.loads(response.read(1024 * 1024))
+            if isinstance(result, dict) and result.get('messageId'):
+                return True
+            print('=== EMAIL NOT SENT: provider acknowledgement missing ===')
+        except (OSError, HTTPError, URLError, ValueError) as error:
+            print('=== EMAIL NOT SENT: Brevo API delivery failed ===')
+            print(f'Failure category: {type(error).__name__}')
+        # Do not retry through SMTP: an ambiguous result could cause duplicates.
         return False
 
     if not SMTP_HOST or not SMTP_FROM_EMAIL:
@@ -419,9 +455,6 @@ def send_email(recipient: str | None, subject: str, body: str):
         print("\n=== EMAIL NOT SENT: SMTP is not configured ===")
         print(f"Missing setting(s): {', '.join(missing)}")
         print("Add them to back_end/.env. Until then no mail reaches a real inbox.")
-        print(f"To: {recipient}")
-        print(f"Subject: {subject}")
-        print(body)
         print("=== end of unsent email ===\n")
         return False
 
@@ -445,8 +478,7 @@ def send_email(recipient: str | None, subject: str, body: str):
         # user's "I never got the email" report -- "535 5.7.8 Authentication failed"
         # here means the SMTP key or login is wrong, not that the code is broken.
         print("\n=== EMAIL NOT SENT: delivery failed ===")
-        print(f"To: {recipient}")
-        print(f"Server said: {error}")
+        print(f"Failure category: {type(error).__name__}")
         print("=== end of email failure ===\n")
         return False
 
@@ -604,23 +636,15 @@ def require_admin(ce_session: str | None):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(engine)
-
-    # SQLite does not add new columns during create_all(), so keep existing
-    # local databases compatible as the application evolves.
+    # Migrations are a deliberate deployment step, never an implicit alteration
+    # during an API worker startup. This works with PostgreSQL and local SQLite.
+    config = Config(str(Path(__file__).with_name("alembic.ini")))
+    expected = set(ScriptDirectory.from_config(config).get_heads())
+    with engine.connect() as connection:
+        current = set(MigrationContext.configure(connection).get_current_heads())
+    if current != expected:
+        raise RuntimeError("Database migrations are required: run alembic -c back_end/alembic.ini upgrade head before starting the API.")
     with SessionLocal() as session:
-        columns = {
-            row[1]
-            for row in session.connection().exec_driver_sql(
-                "PRAGMA table_info(users)"
-            )
-        }
-        if "is_admin" not in columns:
-            session.connection().exec_driver_sql(
-                "ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0"
-            )
-            session.commit()
-
         admin_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
         if admin_email:
             admin_user = session.scalar(
@@ -653,9 +677,80 @@ app.add_middleware(
 )
 
 
+class RequestLimiter:
+    """Bounded per-process protection; a multi-worker host also needs edge limits.
+
+    Use the ASGI client address only. Never trust arbitrary forwarded-IP headers;
+    configure the proxy/server's trusted forwarding addresses at deployment.
+    """
+    def __init__(self):
+        self.buckets = OrderedDict()
+        self.lock = Lock()
+
+    def retry_after(self, key, limit):
+        now = monotonic()
+        with self.lock:
+            while self.buckets and next(iter(self.buckets.values()))[-1] <= now - 60:
+                self.buckets.popitem(last=False)
+            if key not in self.buckets:
+                if len(self.buckets) >= 10000:
+                    return 60
+                self.buckets[key] = deque()
+            attempts = self.buckets[key]
+            while attempts and attempts[0] <= now - 60:
+                attempts.popleft()
+            if len(attempts) >= limit:
+                return max(1, int(60 - (now - attempts[0])) + 1)
+            attempts.append(now)
+            self.buckets.move_to_end(key)
+            return 0
+
+
+request_limiter = RequestLimiter()
+REQUEST_LIMITS = {
+    "/auth/login": 10, "/auth/register": 5,
+    "/auth/request-email-verification": 5, "/auth/request-password-reset": 5,
+    "/auth/verify-email": 10, "/auth/reset-password": 10,
+    "/membership-applications": 20, "/contact-submissions": 20,
+    "/newsletter-subscriptions": 20, "/payments/initialize": 10,
+}
+
+
+def permitted_origin(origin: str) -> bool:
+    if origin == FRONTEND_BASE_URL.rstrip("/"):
+        return True
+    if ENVIRONMENT == "production":
+        return False
+    try:
+        parsed = urlsplit(origin)
+        return parsed.scheme in {"http", "https"} and parsed.hostname in {"localhost", "127.0.0.1"}
+    except ValueError:
+        return False
+
+
 @app.middleware("http")
 async def add_security_headers(request: FastAPIRequest, call_next):
-    response = await call_next(request)
+    response = None
+    if request.method not in {"GET", "HEAD", "OPTIONS"}:
+        origin = request.headers.get("origin")
+        if request.cookies.get(SESSION_COOKIE_NAME) and (
+            (origin is not None and not permitted_origin(origin))
+            or (origin is None and ENVIRONMENT == "production")
+            or request.headers.get("sec-fetch-site") == "cross-site"
+        ):
+            response = JSONResponse(status_code=403, content={"detail": "This request origin is not permitted."})
+        limit = REQUEST_LIMITS.get(request.url.path)
+        if response is None and limit:
+            address = request.client.host if request.client else "unknown"
+            retry = request_limiter.retry_after((address, request.url.path), limit)
+            if retry:
+                response = JSONResponse(status_code=429,
+                    content={"detail": "Too many requests. Please try again shortly."},
+                    headers={"Retry-After": str(retry)})
+    if response is None:
+        response = await call_next(request)
+    if request.url.path.startswith(("/auth/", "/member/", "/admin/", "/payments/")):
+        response.headers["Cache-Control"] = "no-store"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
@@ -665,14 +760,26 @@ async def add_security_headers(request: FastAPIRequest, call_next):
     return response
 
 
+def mail_is_configured():
+    return bool(SMTP_FROM_EMAIL and (BREVO_API_KEY or SMTP_HOST))
+
+
+def require_mail_configuration():
+    # A deployment-wide outage is safe to report identically for every address.
+    # Do this before account lookup or token creation, preserving existing links.
+    if not mail_is_configured():
+        raise HTTPException(status_code=503,
+            detail="Email delivery is currently unavailable. Please contact COCEGN or try again later.")
+
+
 @app.get("/health")
 def health_check():
     # mail_configured is a global signal, identical for every caller, so it is safe
-    # to expose. It answers "would an email actually be sent?" -- which the routes
-    # that must not leak account existence cannot answer per-request.
+    # to expose. It reports configuration presence, not provider/inbox delivery.
+    # Unknown-email endpoints must not expose per-request sending outcomes.
     return {
         "status": "ok",
-        "mail_configured": bool(SMTP_HOST and SMTP_FROM_EMAIL),
+        "mail_configured": mail_is_configured(),
         "payments_configured": bool(PAYSTACK_SECRET_KEY),
         "payments_enabled": PAYMENTS_ENABLED,
     }
@@ -685,6 +792,10 @@ def initialize_payment(details: PaymentInitializationRequest):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Online payments are temporarily unavailable.",
         )
+    if not PAYSTACK_SECRET_KEY or (
+        ENVIRONMENT == "production" and not PAYSTACK_SECRET_KEY.startswith("sk_live_")
+    ):
+        raise HTTPException(status_code=503, detail="Online payments are not ready yet.")
 
     email = str(details.email).lower()
 
@@ -747,6 +858,66 @@ def initialize_payment(details: PaymentInitializationRequest):
     return {"checkout_url": checkout["authorization_url"], "reference": reference}
 
 
+def record_successful_payment(transaction: dict):
+    """Validate a known transaction and atomically preserve its first settlement."""
+    reference = transaction.get("reference")
+    with SessionLocal() as session:
+        payment = session.scalar(select(Payment).where(Payment.reference == reference))
+        if payment is None:
+            return None
+        if (
+            transaction.get("status") != "success"
+            or type(transaction.get("amount")) is not int
+            or transaction["amount"] != payment.amount_kobo
+            or transaction.get("currency") != payment.currency
+        ):
+            raise HTTPException(status_code=502,
+                detail="The payment details could not be confirmed. Please contact COCEGN before trying again.")
+        amount_ngn = payment.amount_kobo // 100
+        session.execute(update(Payment).where(
+            Payment.id == payment.id, Payment.status != "success"
+        ).values(status="success", paid_at=now_utc()))
+        session.commit()
+        return amount_ngn
+
+
+@app.post("/payments/webhook")
+async def receive_payment_webhook(request: FastAPIRequest):
+    # Keep accepting settlement notifications when new checkout is switched off.
+    if not PAYSTACK_SECRET_KEY:
+        raise HTTPException(status_code=503, detail="Payments are not configured yet.")
+    body = bytearray()
+    async for chunk in request.stream():
+        body.extend(chunk)
+        if len(body) > 256 * 1024:
+            raise HTTPException(status_code=413, detail="Payment notification is too large.")
+    signature = request.headers.get("x-paystack-signature", "")
+    expected = hmac.new(PAYSTACK_SECRET_KEY.encode(), body, hashlib.sha512).hexdigest()
+    if (len(signature) != 128 or not signature.isascii()
+        or not hmac.compare_digest(expected, signature)):
+        raise HTTPException(status_code=401, detail="Invalid payment notification signature.")
+    try:
+        event = json.loads(body)
+    except (ValueError, UnicodeDecodeError):
+        raise HTTPException(status_code=400, detail="Invalid payment notification.")
+    if not isinstance(event, dict):
+        raise HTTPException(status_code=400, detail="Invalid payment notification.")
+    if event.get("event") != "charge.success":
+        return {"received": True}
+    transaction = event.get("data")
+    if (not isinstance(transaction, dict)
+        or not isinstance(transaction.get("reference"), str)
+        or not 1 <= len(transaction["reference"]) <= 100):
+        raise HTTPException(status_code=400, detail="Invalid payment notification.")
+    try:
+        # No mail or external requests: commit before acknowledging so failures retry.
+        await run_in_threadpool(record_successful_payment, transaction)
+    except HTTPException as error:
+        raise HTTPException(status_code=400, detail=error.detail) from error
+    # Other Paystack products can share the account; unknown references create no rows.
+    return {"received": True}
+
+
 @app.get("/payments/verify/{reference}")
 def verify_payment(reference: str):
     with SessionLocal() as session:
@@ -755,20 +926,35 @@ def verify_payment(reference: str):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found.")
 
     transaction = paystack_request(f"/transaction/verify/{reference}")
-    if (
-        transaction.get("status") == "success"
-        and transaction.get("reference") == reference
-        and transaction.get("amount") == payment.amount_kobo
-        and transaction.get("currency") == "NGN"
+    if transaction.get("status") == "success" and (
+        transaction.get("reference") != reference
+        or transaction.get("amount") != payment.amount_kobo
+        or transaction.get("currency") != payment.currency
     ):
-        with SessionLocal() as session:
-            payment = session.scalar(select(Payment).where(Payment.reference == reference))
-            payment.status = "success"
-            payment.paid_at = now_utc()
-            session.commit()
-        return {"status": "success", "amount_ngn": payment.amount_kobo // 100}
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="The payment details could not be confirmed. Please contact COCEGN before trying again.")
+    if transaction.get("status") == "success":
+        amount_ngn = record_successful_payment(transaction)
+        return {"status": "success", "amount_ngn": amount_ngn}
 
     return {"status": transaction.get("status", "pending")}
+
+
+@app.get("/admin/payments")
+def list_payments(ce_session: str | None = Cookie(default=None)):
+    require_admin(ce_session)
+    with SessionLocal() as session:
+        payments = session.scalars(select(Payment).order_by(Payment.id.desc()).limit(100)).all()
+        return [{
+            "reference": payment.reference,
+            "email": payment.email,
+            "payment_type": payment.payment_type,
+            "amount_ngn": payment.amount_kobo / 100,
+            "currency": payment.currency,
+            "status": payment.status,
+            "created_at": payment.created_at,
+            "paid_at": payment.paid_at,
+        } for payment in payments]
 
 
 @app.get("/admin/overview")
@@ -1127,6 +1313,7 @@ def register_account(details: RegistrationRequest):
 
 @app.post("/auth/request-email-verification")
 def request_email_verification(details: EmailRequest):
+    require_mail_configuration()
     email = str(details.email).lower()
 
     with SessionLocal() as session:
@@ -1144,14 +1331,15 @@ def request_email_verification(details: EmailRequest):
     # Same response whether the email exists or not.
     return {
         "message": (
-            "If an account needs verification, "
-            "a verification email has been sent."
+            "If an account needs verification, a verification email was requested. "
+            "If it does not arrive, please contact COCEGN."
         )
     }
 
 
 @app.post("/auth/request-password-reset")
 def request_password_reset(details: EmailRequest):
+    require_mail_configuration()
     email = str(details.email).lower()
 
     with SessionLocal() as session:
@@ -1163,7 +1351,8 @@ def request_password_reset(details: EmailRequest):
             send_password_reset_email(user.email, token)
 
     # Do not reveal whether an email address has an account.
-    return {"message": "If an account exists, a password-reset email has been sent."}
+    return {"message": "If an account exists, a password-reset email was requested. "
+        "If it does not arrive, please contact COCEGN or try again later."}
 
 
 @app.post("/auth/reset-password")
@@ -1244,6 +1433,10 @@ def verify_email(details: VerifyEmailRequest):
             )
 
         user.email_verified = True
+        # The server-approved initial administrator can finish setup without
+        # waiting for another worker restart. Identity must be verified first.
+        if user.email == os.getenv("ADMIN_EMAIL", "").strip().lower():
+            user.is_admin = True
         verification.used_at = now_utc()
 
         session.commit()

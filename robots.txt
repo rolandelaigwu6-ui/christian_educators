@@ -9,3 +9,4 @@ Disallow: /back_end/
 Disallow: /docs/
 Disallow: /scripts/
 Disallow: /.git/
+Sitemap: https://cocegn.vercel.app/sitemap.xml
